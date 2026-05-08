@@ -32,29 +32,26 @@ def webhook(request):
             chat_id = chat.get('id')
             chat_type = chat.get('type')
             
-            # Sadece gruplarda çalışsın (chat_id negatif olmalı)
+            # Sadece /kayit komutunda yanıt ver
             if chat_type in ['group', 'supergroup'] and chat_id and chat_id < 0:
                 if text and '/kayit' in text.lower():
-                    # Kayıt komutu - grup bilgilerini döndür
                     response_text = f"📋 Kayıt Bilgileri\n\n"
                     response_text += f"🔹 Grup Adı: {chat.get('title', 'Bilinmeyen')}\n"
                     response_text += f"🔹 Grup ID: {chat_id}\n"
                     response_text += f"🔹 Grup Türü: {'Süper Grup' if chat_type == 'supergroup' else 'Grup'}\n"
                     if chat.get('username'):
                         response_text += f"🔹 Kullanıcı Adı: @{chat.get('username')}\n"
-                else:
-                    response_text = f"👋 Mesajınız alındı!\nGrup: {chat.get('title', 'Bilinmeyen')}\nMesaj: {text[:100] if text else 'Boş'}"
-                
-                # Mesaj gönder
-                send_message_url = f"{TELEGRAM_API_URL}/sendMessage"
-                payload = {
-                    'chat_id': chat_id,
-                    'text': response_text
-                }
-                
-                import requests
-                resp = requests.post(send_message_url, json=payload, timeout=10)
-                logger.info(f"Send message response: {resp.status_code}")
+                    
+                    # Mesaj gönder
+                    send_message_url = f"{TELEGRAM_API_URL}/sendMessage"
+                    payload = {
+                        'chat_id': chat_id,
+                        'text': response_text
+                    }
+                    
+                    import requests
+                    resp = requests.post(send_message_url, json=payload, timeout=10)
+                    logger.info(f"Send message response: {resp.status_code}")
                 
             return HttpResponse('OK')
         except Exception as e:
