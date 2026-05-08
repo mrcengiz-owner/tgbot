@@ -48,7 +48,7 @@ python manage.py runserver
 DJANGO_SECRET_KEY=<rastgele-bir-key>
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=<domain-adresiniz>
-TELEGRAM_BOT_TOKEN=8058870569:AAFfuGffgNC15hED-nlUIfqQYSewf8RND4M
+TELEGRAM_BOT_TOKEN=8058870569:AAFfuGffgNC15hED-sdasdasdsadas
 ```
 
 **3. Build Command:**
