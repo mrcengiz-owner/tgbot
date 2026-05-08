@@ -93,3 +93,8 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 0
     # CSRF ayarları - Coolify domain
     CSRF_TRUSTED_ORIGINS = ['https://tgbot.nexkasa.com', 'http://tgbot.nexkasa.com']
+
+# Login settings
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'

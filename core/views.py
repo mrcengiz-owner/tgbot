@@ -2,11 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 import requests
 from .models import TelegramGroup, MessageTemplate, MessageLog
 
 
+@login_required
 def dashboard(request):
     """Anasayfa - Dashboard"""
     context = {
@@ -21,6 +23,7 @@ def dashboard(request):
     return render(request, 'core/dashboard.html', context)
 
 
+@login_required
 def group_list(request):
     """Gruplar listesi"""
     groups = TelegramGroup.objects.all()
@@ -67,6 +70,7 @@ def group_toggle(request, pk):
     return redirect('groups')
 
 
+@login_required
 def settings_view(request):
     """Ayarlar sayfası"""
     if request.method == 'POST':
@@ -82,6 +86,7 @@ def settings_view(request):
     return render(request, 'core/settings.html', {'groups': groups})
 
 
+@login_required
 def templates(request):
     """Hazır mesaj şablonları"""
     templates = MessageTemplate.objects.all()
@@ -125,6 +130,7 @@ def template_delete(request, pk):
     return redirect('templates')
 
 
+@login_required
 def send_message_view(request):
     """Mesaj gönderim sayfası"""
     groups = TelegramGroup.objects.filter(is_active=True)
