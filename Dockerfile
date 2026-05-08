@@ -1,27 +1,31 @@
-# Telegram Panel Dockerfile
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# System dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    nginx \
     && rm -rf /var/lib/apt/lists/*
 
-# Python dependencies
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
-# Copy project
+# Copy application code
 COPY . .
 
-# Django setup
-RUN python manage.py migrate --noinput || true
-RUN python manage.py collectstatic --noinput || true
+# Collect static files
+RUN python manage.py collectstatic --noinput
+
+# Create non-root user
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
 
 # Expose port
 EXPOSE 8000
 
-# Run with gunicorn
-CMD ["gunicorn", "telegram_panel.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
+# Start script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
