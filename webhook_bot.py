@@ -58,10 +58,9 @@ def set_webhook(request):
     """Webhook ayarla"""
     import requests
     
-    # İstek yapan domain'i al
+    # Her zaman HTTPS kullan - Coolify otomatik HTTPS sağlar
     host = request.get_host()
-    scheme = 'https' if request.is_secure() else 'http'
-    webhook_url = f"{scheme}://{host}/webhook/"
+    webhook_url = f"https://{host}/webhook/"
     
     url = f"{TELEGRAM_API_URL}/setWebhook"
     payload = {'url': webhook_url}
