@@ -32,7 +32,6 @@ def group_add(request):
     """Grup ekle"""
     name = request.POST.get('name')
     chat_id = request.POST.get('chat_id')
-    bot_token = request.POST.get('bot_token')
     description = request.POST.get('description', '')
     
     if TelegramGroup.objects.filter(chat_id=chat_id).exists():
@@ -42,7 +41,6 @@ def group_add(request):
     TelegramGroup.objects.create(
         name=name,
         chat_id=chat_id,
-        bot_token=bot_token,
         description=description
     )
     messages.success(request, 'Grup başarıyla eklendi!')
@@ -165,13 +163,16 @@ def send_message(request):
     )
     log.groups.set(groups)
     
-    # Mesajları gönder
+    # Mesajları gönder (ayarlardaki ana token kullanılacak)
+    from django.conf import settings
+    bot_token = settings.TELEGRAM_BOT_TOKEN
+    
     sent_count = 0
     failed_count = 0
     
     for group in groups:
         try:
-            url = f"https://api.telegram.org/bot{group.bot_token}/sendMessage"
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
             data = {
                 'chat_id': group.chat_id,
                 'text': message_content

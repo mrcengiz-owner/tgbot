@@ -6,7 +6,6 @@ class TelegramGroup(models.Model):
     """Telegram gruplarını saklayan model"""
     name = models.CharField(max_length=255, verbose_name="Grup Adı")
     chat_id = models.CharField(max_length=100, unique=True, verbose_name="Chat ID")
-    bot_token = models.CharField(max_length=150, verbose_name="Bot Token")
     description = models.TextField(blank=True, null=True, verbose_name="Açıklama")
     is_active = models.BooleanField(default=True, verbose_name="Aktif mi?")
     created_at = models.DateTimeField(auto_now_add=True)

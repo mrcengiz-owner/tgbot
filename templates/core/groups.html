@@ -38,12 +38,6 @@
                     {% endif %}
                 </p>
                 
-                <div class="group-card-meta mb-3">
-                    <small class="text-muted">
-                        <i class="fas fa-robot me-1"></i>{{ group.bot_token|truncatechars:30 }}
-                    </small>
-                </div>
-                
                 <div class="group-card-actions">
                     <a href="{% url 'group_toggle' group.id %}" class="btn btn-sm {% if group.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} flex-fill">
                         <i class="fas {% if group.is_active %}fa-pause{% else %}fa-play{% endif %} me-1"></i>
@@ -100,11 +94,6 @@
                         <label class="form-label">Chat ID <span class="text-danger">*</span></label>
                         <input type="text" name="chat_id" class="form-control" placeholder="-1001234567890" required>
                         <small class="text-muted">Telegram grubunun Chat ID'si (negatif sayı olmalı)</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Bot Token <span class="text-danger">*</span></label>
-                        <input type="text" name="bot_token" class="form-control" placeholder="123456789:ABCdef..." required>
-                        <small class="text-muted">Gruba eklenen botun API token'ı</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Açıklama</label>
