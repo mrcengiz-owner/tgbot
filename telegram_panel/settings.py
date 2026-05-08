@@ -91,3 +91,5 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
     SECURE_HSTS_SECONDS = 0
+    # CSRF ayarları - Coolify domain
+    CSRF_TRUSTED_ORIGINS = ['https://tgbot.nexkasa.com', 'http://tgbot.nexkasa.com']
