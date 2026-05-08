@@ -32,8 +32,8 @@ def webhook(request):
             chat_id = chat.get('id')
             chat_type = chat.get('type')
             
-            # Sadece gruplarda çalışsın
-            if chat_type in ['group', 'supergroup']:
+            # Sadece gruplarda çalışsın (chat_id negatif olmalı)
+            if chat_type in ['group', 'supergroup'] and chat_id and chat_id < 0:
                 response_text = f"👋 Mesajınız alındı!\nGrup: {chat.get('title', 'Bilinmeyen')}\nMesaj: {text[:100] if text else 'Boş'}"
                 
                 # Mesaj gönder
@@ -44,7 +44,8 @@ def webhook(request):
                 }
                 
                 import requests
-                requests.post(send_message_url, json=payload, timeout=10)
+                resp = requests.post(send_message_url, json=payload, timeout=10)
+                logger.info(f"Send message response: {resp.status_code}")
                 
             return HttpResponse('OK')
         except Exception as e:
@@ -57,15 +58,19 @@ def set_webhook(request):
     """Webhook ayarla"""
     import requests
     
-    # Webhook URL'i ayarla
-    # NOT: Bu URL'yi Coolify'da belirlediğiniz domain ile değiştirin
-    webhook_url = "https://your-domain.com/webhook/"
+    # İstek yapan domain'i al
+    host = request.get_host()
+    scheme = 'https' if request.is_secure() else 'http'
+    webhook_url = f"{scheme}://{host}/webhook/"
     
     url = f"{TELEGRAM_API_URL}/setWebhook"
     payload = {'url': webhook_url}
     
-    response = requests.post(url, json=payload)
-    return HttpResponse(f"Webhook set: {response.text}")
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        return HttpResponse(f"Webhook URL: {webhook_url}<br>Response: {response.text}")
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
 
 def delete_webhook(request):
     """Webhook sil"""
