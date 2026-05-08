@@ -41,7 +41,9 @@ python manage.py runserver
 
 ### Coolify Deployment
 
-**1. Environment Variables:**
+**1. Dockerfile Eklendi:** Proje artık nixpacks yerine manuel Dockerfile kullanıyor.
+
+**2. Environment Variables:**
 ```
 DJANGO_SECRET_KEY=<rastgele-bir-key>
 DJANGO_DEBUG=False
@@ -49,17 +51,17 @@ DJANGO_ALLOWED_HOSTS=<domain-adresiniz>
 TELEGRAM_BOT_TOKEN=8058870569:AAFfuGffgNC15hED-nlUIfqQYSewf8RND4M
 ```
 
-**2. Build Command:**
+**3. Build Command:**
 ```bash
-pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
+docker build -t telegram-panel .
 ```
 
-**3. Start Command:**
+**4. Start Command:**
 ```bash
 gunicorn telegram_panel.wsgi:application --bind 0.0.0.0:8000
 ```
 
-**4. Webhook Ayarla (Deploy sonrası):**
+**5. Webhook Ayarla (Deploy sonrası):**
 Tarayıcıda şu URL'yi açın:
 ```
 https://<domain>/webhook/set/
@@ -106,4 +108,4 @@ TelegramBot/
 
 ## Lisans
 
-MIT# tgbot
+MIT
