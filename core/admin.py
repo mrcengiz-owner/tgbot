@@ -4,7 +4,7 @@ from .models import TelegramGroup, MessageTemplate, MessageLog, Settings
 
 @admin.register(TelegramGroup)
 class TelegramGroupAdmin(admin.ModelAdmin):
-    list_display = ['name', 'chat_id', 'bot_token', 'is_active', 'created_at']
+    list_display = ['name', 'chat_id', 'is_active', 'created_at']
     list_filter = ['is_active', 'created_at']
     search_fields = ['name', 'chat_id']
     ordering = ['-created_at']
