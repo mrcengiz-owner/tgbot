@@ -11,21 +11,21 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
+# Copy start script and make it executable BEFORE user change
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
 # Copy application code
 COPY . .
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
-# Create non-root user
+# Create non-root user and give ownership
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
 EXPOSE 8000
-
-# Start script
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
 
 CMD ["/start.sh"]
