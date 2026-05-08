@@ -1,0 +1,145 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Hazır Mesajlar - Telegram Panel{% endblock %}
+{% block page_title %}Hazır Mesajlar{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Toplam {{ templates.count }} şablon mevcut</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTemplateModal">
+        <i class="fas fa-plus me-2"></i>Yeni Şablon Ekle
+    </button>
+</div>
+
+<div class="row g-4">
+    {% if templates %}
+        {% for template in templates %}
+        <div class="col-xl-4 col-md-6">
+            <div class="group-card">
+                <div class="group-card-header">
+                    <div>
+                        <h5 class="group-card-title">{{ template.name }}</h5>
+                    </div>
+                    {% if template.is_active %}
+                        <span class="badge badge-success">Aktif</span>
+                    {% else %}
+                        <span class="badge badge-secondary">Pasif</span>
+                    {% endif %}
+                </div>
+                
+                <div class="p-3 rounded-3 mb-3" style="background: var(--gray-50); max-height: 150px; overflow-y: auto;">
+                    <small class="text-muted">{{ template.content|truncatechars:200 }}</small>
+                </div>
+                
+                {% if template.description %}
+                <p class="group-card-desc">{{ template.description|truncatechars:80 }}</p>
+                {% endif %}
+                
+                <div class="group-card-actions">
+                    <button class="btn btn-sm btn-primary flex-fill" data-bs-toggle="modal" data-bs-target="#editTemplateModal{{ template.id }}">
+                        <i class="fas fa-edit me-1"></i>Düzenle
+                    </button>
+                    <a href="{% url 'template_delete' template.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu şablonu silmek istediğinizden emin misiniz?')">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+                
+                <div class="mt-3 pt-3 border-top">
+                    <small class="text-muted">
+                        <i class="far fa-calendar-plus me-1"></i>
+                        {{ template.created_at|date:"d M Y, H:i" }}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Template Modal -->
+        <div class="modal fade" id="editTemplateModal{{ template.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Şablon Düzenle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{% url 'template_edit' template.id %}" method="POST">
+                        {% csrf_token %}
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Şablon Adı <span class="text-danger">*</span></label>
+                                <input type="text" name="name" class="form-control" value="{{ template.name }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mesaj İçeriği <span class="text-danger">*</span></label>
+                                <textarea name="content" class="form-control" rows="6" required>{{ template.content }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Açıklama</label>
+                                <textarea name="description" class="form-control" rows="2">{{ template.description }}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="card-modern">
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-file-lines"></i>
+                    </div>
+                    <h5>Henüz hiç şablon oluşturulmadı</h5>
+                    <p>Sık kullandığınız mesajları şablon olarak kaydedin.</p>
+                    <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addTemplateModal">
+                        <i class="fas fa-plus me-2"></i>İlk Şablonu Oluştur
+                    </button>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Template Modal -->
+<div class="modal fade" id="addTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Yeni Şablon Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'template_add' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Şablon Adı <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="Örn: Günlük Duyuru" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mesaj İçeriği <span class="text-danger">*</span></label>
+                        <textarea name="content" class="form-control" rows="6" placeholder="Mesaj içeriğini buraya yazın..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Şablon hakkında notlar..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

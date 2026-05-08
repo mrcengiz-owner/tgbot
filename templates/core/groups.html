@@ -1,0 +1,124 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Gruplar - Telegram Panel{% endblock %}
+{% block page_title %}Gruplar{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Toplam {{ groups.count }} grup tanımlandı</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addGroupModal">
+        <i class="fas fa-plus me-2"></i>Yeni Grup Ekle
+    </button>
+</div>
+
+<div class="row g-4">
+    {% if groups %}
+        {% for group in groups %}
+        <div class="col-xl-4 col-md-6">
+            <div class="group-card">
+                <div class="group-card-header">
+                    <div>
+                        <h5 class="group-card-title">{{ group.name }}</h5>
+                        <span class="group-card-id">{{ group.chat_id }}</span>
+                    </div>
+                    {% if group.is_active %}
+                        <span class="badge badge-success">Aktif</span>
+                    {% else %}
+                        <span class="badge badge-secondary">Pasif</span>
+                    {% endif %}
+                </div>
+                
+                <p class="group-card-desc">
+                    {% if group.description %}
+                        {{ group.description }}
+                    {% else %}
+                        <span class="text-muted fst-italic">Açıklama eklenmemiş</span>
+                    {% endif %}
+                </p>
+                
+                <div class="group-card-meta mb-3">
+                    <small class="text-muted">
+                        <i class="fas fa-robot me-1"></i>{{ group.bot_token|truncatechars:30 }}
+                    </small>
+                </div>
+                
+                <div class="group-card-actions">
+                    <a href="{% url 'group_toggle' group.id %}" class="btn btn-sm {% if group.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} flex-fill">
+                        <i class="fas {% if group.is_active %}fa-pause{% else %}fa-play{% endif %} me-1"></i>
+                        {{ group.is_active|yesno:"Pasifleştir,Aktifleştir" }}
+                    </a>
+                    <a href="{% url 'group_delete' group.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu grubu silmek istediğinizden emin misiniz?')">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+                
+                <div class="mt-3 pt-3 border-top">
+                    <small class="text-muted">
+                        <i class="far fa-calendar-plus me-1"></i>
+                        {{ group.created_at|date:"d M Y, H:i" }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="card-modern">
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h5>Henüz hiç grup eklenmedi</h5>
+                    <p>Telegram gruplarınızı ekleyerek mesaj göndermeye başlayın.</p>
+                    <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addGroupModal">
+                        <i class="fas fa-plus me-2"></i>İlk Grubu Ekle
+                    </button>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Group Modal -->
+<div class="modal fade" id="addGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Yeni Grup Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'group_add' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Grup Adı <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="Örn: Genel Sohbet" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Chat ID <span class="text-danger">*</span></label>
+                        <input type="text" name="chat_id" class="form-control" placeholder="-1001234567890" required>
+                        <small class="text-muted">Telegram grubunun Chat ID'si (negatif sayı olmalı)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bot Token <span class="text-danger">*</span></label>
+                        <input type="text" name="bot_token" class="form-control" placeholder="123456789:ABCdef..." required>
+                        <small class="text-muted">Gruba eklenen botun API token'ı</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Grup hakkında notlar..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

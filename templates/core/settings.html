@@ -1,0 +1,145 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Ayarlar - Telegram Panel{% endblock %}
+{% block page_title %}Ayarlar{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Bot Token Settings -->
+    <div class="col-lg-6">
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h5><i class="fas fa-key"></i>Bot Token Ayarları</h5>
+            </div>
+            <div class="card-body-modern">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="fas fa-robot me-2 text-primary"></i>Ana Bot Token
+                        </label>
+                        <input type="text" name="main_bot_token" class="form-control" 
+                               value="8058870569:AAFfuGffgNC15hED-nlUIfqQYSewf8RND4M" 
+                               placeholder="123456789:ABCdef...">
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Telegram Bot API token'ı
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Kaydet
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Database Info -->
+        <div class="card-modern mt-4">
+            <div class="card-header-modern">
+                <h5><i class="fas fa-database"></i>Veritabanı Bilgileri</h5>
+            </div>
+            <div class="card-body-modern p-0">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-database text-primary me-3"></i>
+                            <span>Veritabanı Tipi</span>
+                        </div>
+                        <span class="badge badge-primary">SQLite</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-layer-group text-success me-3"></i>
+                            <span>Toplam Gruplar</span>
+                        </div>
+                        <span class="badge badge-success">{{ groups.count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Info -->
+    <div class="col-lg-6">
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h5><i class="fas fa-microchip"></i>Sistem Bilgileri</h5>
+            </div>
+            <div class="card-body-modern p-0">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fab fa-python text-success me-3"></i>
+                            <span>Django Sürümü</span>
+                        </div>
+                        <span class="badge badge-success">6.0.5</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-robot text-primary me-3"></i>
+                            <span>python-telegram-bot</span>
+                        </div>
+                        <span class="badge badge-primary">20.7</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fab fa-python text-info me-3"></i>
+                            <span>Python Sürümü</span>
+                        </div>
+                        <span class="badge badge-info">3.x</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Help -->
+        <div class="card-modern mt-4">
+            <div class="card-header-modern">
+                <h5><i class="fas fa-circle-question"></i>Yardım</h5>
+            </div>
+            <div class="card-body-modern">
+                <div class="accordion" id="helpAccordion">
+                    <div class="accordion-item border-0 mb-2">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-light rounded-3" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#help1" style="padding: 16px;">
+                                <i class="fas fa-question-circle text-primary me-2"></i>
+                                Chat ID Nasıl Alınır?
+                            </button>
+                        </h2>
+                        <div id="help1" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body pt-3">
+                                <ol class="mb-0 small text-muted">
+                                    <li class="mb-2">Gruba eklemek istediğiniz botu gruba admin olarak ekleyin</li>
+                                    <li class="mb-2">@userinfobot veya @getidsbot botlarından birini gruba ekleyin</li>
+                                    <li>Bot size grubun Chat ID'sini verecektir (genellikle -100 ile başlar)</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-light rounded-3" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#help2" style="padding: 16px;">
+                                <i class="fas fa-key text-primary me-2"></i>
+                                Bot Token Nasıl Alınır?
+                            </button>
+                        </h2>
+                        <div id="help2" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body pt-3">
+                                <ol class="mb-0 small text-muted">
+                                    <li class="mb-2">@BotFather'a Telegram'dan mesaj atın</li>
+                                    <li class="mb-2">/newbot komutunu gönderin</li>
+                                    <li class="mb-2">Bot adını ve kullanıcı adını belirleyin</li>
+                                    <li class="mb-2">Size verilen token'ı kopyalayın</li>
+                                    <li>Bu token'ı gruba ekleyin ve botu gruba ekleyin</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
