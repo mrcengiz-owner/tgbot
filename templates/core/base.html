@@ -6,96 +6,54 @@
     <title>{% block title %}Telegram Panel{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-dark: #4338ca;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --info: #06b6d4;
-            --dark: #0f172a;
-            --sidebar-width: 260px;
-        }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f1f5f9;
-            color: #334155;
-            min-height: 100vh;
-        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
         
         .sidebar {
             position: fixed;
             top: 0;
             left: 0;
-            width: var(--sidebar-width);
+            width: 240px;
             height: 100vh;
-            background: var(--dark);
+            background: #1e293b;
             color: #fff;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
+            overflow-y: auto;
         }
         
-        .sidebar-brand {
+        .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         
-        .sidebar-brand h4 { 
-            font-size: 18px; 
-            font-weight: 700; 
-            color: #fff;
-        }
+        .sidebar-header h5 { margin: 0; font-weight: 700; }
+        .sidebar-header small { color: #94a3b8; }
         
-        .sidebar-brand small { 
-            font-size: 11px; 
-            color: #94a3b8; 
-        }
+        .nav-menu { padding: 15px 10px; }
         
-        .nav-section { padding: 16px 12px; }
-        .nav-section-title {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #64748b;
-            padding: 8px 12px;
-            font-weight: 600;
+        .nav-item {
+            margin-bottom: 4px;
         }
-        
-        .nav-item { margin-bottom: 4px; }
         
         .nav-link {
             display: flex;
             align-items: center;
-            padding: 12px 14px;
+            padding: 12px 16px;
             color: #94a3b8;
             text-decoration: none;
             border-radius: 10px;
-            font-weight: 500;
-            font-size: 14px;
-            transition: all 0.2s;
+            transition: 0.2s;
             gap: 12px;
+            font-weight: 500;
         }
         
-        .nav-link:hover { 
-            background: rgba(255,255,255,0.05); 
-            color: #fff; 
-        }
-        
-        .nav-link.active {
-            background: var(--primary);
-            color: #fff;
-        }
-        
+        .nav-link:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .nav-link.active { background: #3b82f6; color: #fff; }
         .nav-link i { width: 20px; text-align: center; }
         
         .main-content {
-            margin-left: var(--sidebar-width);
+            margin-left: 240px;
             min-height: 100vh;
         }
         
@@ -108,49 +66,15 @@
             align-items: center;
         }
         
-        .page-title { 
-            font-size: 20px; 
-            font-weight: 700; 
-            color: #0f172a; 
-            margin: 0;
-        }
+        .page-title { font-size: 24px; font-weight: 700; color: #0f172a; margin: 0; }
         
-        .content-wrapper { padding: 24px; }
-        
-        .stat-card {
-            background: #fff;
-            border-radius: 14px;
-            padding: 20px;
-            border: 1px solid #e2e8f0;
-        }
-        
-        .stat-card .icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            margin-bottom: 12px;
-        }
-        
-        .stat-card .value {
-            font-size: 28px;
-            font-weight: 700;
-            color: #0f172a;
-        }
-        
-        .stat-card .label {
-            font-size: 13px;
-            color: #64748b;
-        }
+        .content { padding: 24px; }
         
         .card {
             background: #fff;
-            border-radius: 14px;
+            border-radius: 12px;
             border: 1px solid #e2e8f0;
-            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         
         .card-header {
@@ -158,122 +82,231 @@
             border-bottom: 1px solid #e2e8f0;
             font-weight: 600;
             background: #f8fafc;
+            border-radius: 12px 12px 0 0;
         }
         
         .card-body { padding: 20px; }
         
+        .stat-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .stat-box .icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .stat-box .value { font-size: 28px; font-weight: 700; color: #0f172a; }
+        .stat-box .label { color: #64748b; font-size: 14px; }
+        
         .btn-primary {
-            background: var(--primary);
+            background: #3b82f6;
             border: none;
             padding: 10px 20px;
             border-radius: 8px;
             font-weight: 600;
-            font-size: 14px;
         }
         
-        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-primary:hover { background: #2563eb; }
+        
+        .btn-sm { padding: 6px 12px; border-radius: 6px; font-weight: 500; }
         
         .form-control, .form-select {
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             padding: 10px 14px;
-            font-size: 14px;
         }
         
         .form-control:focus, .form-select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         
-        .modal-content { border: none; border-radius: 14px; }
-        .modal-header { border-radius: 14px 14px 0 0; }
+        .modal-content { border: none; border-radius: 16px; }
+        .modal-header { border-radius: 16px 16px 0 0; }
         
         .badge { padding: 5px 10px; border-radius: 6px; font-weight: 500; font-size: 12px; }
-        .badge-success { background: #d1fae5; color: #059669; }
-        .badge-danger { background: #fee2e2; color: #dc2626; }
-        .badge-warning { background: #fef3c7; color: #d97706; }
-        .badge-primary { background: #dbeafe; color: #2563eb; }
         
+        .table { margin-bottom: 0; }
+        .table th { background: #f8fafc; font-weight: 600; font-size: 13px; text-transform: uppercase; color: #64748b; border: none; padding: 12px 16px; }
+        .table td { vertical-align: middle; border-color: #f1f5f9; padding: 14px 16px; }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        /* Mobile Toggle Button */
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        /* Overlay for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        
+        /* Responsive */
         @media (max-width: 992px) {
-            .sidebar { transform: translateX(-100%); }
-            .main-content { margin-left: 0; }
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 1000;
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .sidebar-overlay.active {
+                display: block;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-toggle {
+                display: block;
+            }
+            
+            .page-title {
+                font-size: 18px;
+            }
+            
+            .content {
+                padding: 16px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .topbar {
+                padding: 12px 16px;
+            }
+            
+            .content {
+                padding: 12px;
+            }
+            
+            .stat-box {
+                padding: 16px;
+            }
+            
+            .stat-box .value {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="d-flex">
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <h4><i class="fab fa-telegram-plane me-2"></i>Telegram Panel</h4>
-                <small>Mesaj Yönetim Sistemi</small>
-            </div>
-            
-            <div class="nav-section">
-                <div class="nav-section-title">Ana Menü</div>
-                <div class="nav-item">
-                    <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                        <i class="fas fa-chart-pie"></i>Dashboard
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a href="{% url 'groups' %}" class="nav-link {% if 'gruplar' in request.path %}active{% endif %}">
-                        <i class="fas fa-users"></i>Gruplar
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a href="{% url 'templates' %}" class="nav-link {% if 'sablon' in request.path %}active{% endif %}">
-                        <i class="fas fa-file-alt"></i>Hazır Mesajlar
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a href="{% url 'send_message' %}" class="nav-link {% if 'gonder' in request.path %}active{% endif %}">
-                        <i class="fas fa-paper-plane"></i>Gönderimler
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a href="{% url 'scheduled_tasks' %}" class="nav-link {% if 'planli' in request.path %}active{% endif %}">
-                        <i class="fas fa-clock"></i>Planlı Gönderimler
-                    </a>
-                </div>
-            </div>
-            
-            <div class="nav-section mt-auto" style="border-top: 1px solid rgba(255,255,255,0.1);">
-                <div class="nav-item">
-                    <a href="{% url 'settings' %}" class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-                        <i class="fas fa-cog"></i>Ayarlar
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a href="{% url 'logout' %}" class="nav-link">
-                        <i class="fas fa-sign-out-alt"></i>Çıkış Yap
-                    </a>
-                </div>
-            </div>
-        </aside>
+    <!-- Mobile Overlay -->
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h5><i class="fab fa-telegram-plane me-2"></i>Telegram Panel</h5>
+            <small>Mesaj Yönetim</small>
+        </div>
         
-        <div class="main-content">
-            <header class="topbar">
-                <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
-                <div class="text-muted small">
-                    <i class="far fa-clock me-1"></i>{% now "d M Y, H:i" %}
-                </div>
-            </header>
+        <nav class="nav-menu">
+            <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-pie"></i>Dashboard
+            </a>
+            <a href="{% url 'groups' %}" class="nav-link {% if 'gruplar' in request.path %}active{% endif %}">
+                <i class="fas fa-users"></i>Gruplar
+            </a>
+            <a href="{% url 'templates' %}" class="nav-link {% if 'sablon' in request.path %}active{% endif %}">
+                <i class="fas fa-file-alt"></i>Hazır Mesajlar
+            </a>
+            <a href="{% url 'send_message' %}" class="nav-link {% if 'gonder' in request.path %}active{% endif %}">
+                <i class="fas fa-paper-plane"></i>Gönderimler
+            </a>
+            <a href="{% url 'scheduled_tasks' %}" class="nav-link {% if 'planli' in request.path %}active{% endif %}">
+                <i class="fas fa-clock"></i>Planlı Gönderimler
+            </a>
             
-            <div class="content-wrapper">
-                {% if messages %}
-                    {% for message in messages %}
-                    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                    {% endfor %}
-                {% endif %}
-                
-                {% block content %}{% endblock %}
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px;">
+                <a href="{% url 'settings' %}" class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                    <i class="fas fa-cog"></i>Ayarlar
+                </a>
+                <a href="{% url 'logout' %}" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i>Çıkış Yap
+                </a>
             </div>
+        </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="topbar">
+            <div class="d-flex align-items-center gap-3">
+                <button class="mobile-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+            <div class="user-info">
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">{{ user.username }}</div>
+                    <div style="font-size: 12px; color: #64748b;">Yönetici</div>
+                </div>
+                <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
+            </div>
+        </header>
+        
+        <div class="content">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+            
+            {% block content %}{% endblock %}
         </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.querySelector('.sidebar-overlay').classList.toggle('active');
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>
