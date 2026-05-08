@@ -1,64 +1,59 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Planlanmış Gönderimler - Telegram Panel{% endblock %}
-{% block page_title %}Planlanmış Gönderimler{% endblock %}
+{% block title %}Planlı Gönderimler - Telegram Panel{% endblock %}
+{% block page_title %}Planlı Gönderimler{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <p class="text-muted mb-0">Otomatik mesaj gönderim zamanlamaları</p>
-    </div>
+    <p class="text-muted mb-0">{{ tasks.count }} planlı görev mevcut</p>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
-        <i class="fas fa-plus me-2"></i>Yeni Görev Ekle
+        <i class="fas fa-plus me-2"></i>Yeni Görev
     </button>
 </div>
 
 <div class="row g-4">
     {% if tasks %}
         {% for task in tasks %}
-        <div class="col-xl-6 col-md-6">
-            <div class="card-modern">
-                <div class="card-body-modern">
+        <div class="col-md-6 col-xl-4">
+            <div class="card h-100">
+                <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="mb-1">{{ task.name }}</h5>
-                            <span class="text-muted small">
-                                {% if task.template %}
-                                    {{ task.template.name }}
-                                {% else %}
-                                    Özel mesaj
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" 
-                                   id="toggle{{ task.id }}" 
-                                   {% if task.is_active %}checked{% endif %}
-                                   onchange="toggleTask({{ task.id }})">
-                        </div>
+                        <h5 class="mb-0">{{ task.name }}</h5>
+                        {% if task.is_active %}
+                            <span class="badge bg-success">Aktif</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Pasif</span>
+                        {% endif %}
                     </div>
                     
-                    <div class="row g-3 mb-3">
-                        <div class="col-6">
-                            <div class="bg-light rounded-3 p-3 text-center">
-                                <div class="text-primary fw-bold fs-4">{{ task.interval_minutes }}</div>
-                                <div class="small text-muted">dakika aralık</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="bg-light rounded-3 p-3 text-center">
-                                <div class="text-success fw-bold fs-4">{{ task.groups.count }}</div>
-                                <div class="small text-muted">grup</div>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Şablon:</small>
+                        <div class="fw-semibold">{{ task.template.name }}</div>
                     </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Aralık:</small>
+                        <div class="fw-semibold">{{ task.interval_minutes }} dakika</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Gruplar:</small>
+                        <div class="small">{{ task.groups.count }} grup seçili</div>
+                    </div>
+                    
+                    {% if task.last_run %}
+                    <div class="mb-3">
+                        <small class="text-muted">Son Çalışma:</small>
+                        <div class="small">{{ task.last_run|date:"d.m.Y H:i" }}</div>
+                    </div>
+                    {% endif %}
                     
                     <div class="d-flex gap-2">
                         <a href="{% url 'scheduled_task_toggle' task.id %}" class="btn btn-sm {% if task.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} flex-fill">
                             <i class="fas {% if task.is_active %}fa-pause{% else %}fa-play{% endif %} me-1"></i>
                             {{ task.is_active|yesno:"Durdur,Başlat" }}
                         </a>
-                        <a href="{% url 'scheduled_task_delete' task.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu görevi silmek istediğinize emin misiniz?')">
+                        <a href="{% url 'scheduled_task_delete' task.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Görevi silmek istediğinize emin misiniz?')">
                             <i class="fas fa-trash"></i>
                         </a>
                     </div>
@@ -68,14 +63,12 @@
         {% endfor %}
     {% else %}
         <div class="col-12">
-            <div class="card-modern">
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <h5>Henüz planlanmış görev yok</h5>
-                    <p>Otomatik mesaj gönderimi için yeni görevler oluşturun.</p>
-                    <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Henüz planlı görev yok</h5>
+                    <p class="text-muted">Belirli aralıklarla otomatik mesaj göndermek için görev oluşturun.</p>
+                    <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#addTaskModal">
                         <i class="fas fa-plus me-2"></i>İlk Görevi Oluştur
                     </button>
                 </div>
@@ -86,63 +79,45 @@
 
 <!-- Add Task Modal -->
 <div class="modal fade" id="addTaskModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Yeni Planlanmış Görev</h5>
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Yeni Planlı Görev</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{% url 'scheduled_task_add' %}" method="POST">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Görev Adı <span class="text-danger">*</span></label>
-                                <input type="text" name="name" class="form-control" placeholder="Örn: Sabah mesajı" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Aralık (dakika) <span class="text-danger">*</span></label>
-                                <input type="number" name="interval_minutes" class="form-control" value="60" min="1" required>
-                                <small class="text-muted">Kaç dakikada bir gönderilecek</small>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <div class="mb-3">
-                        <label class="form-label">Şablon Seç <span class="text-danger">*</span></label>
+                        <label class="form-label">Görev Adı <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="Örn: Günlük Hatırlatma" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Şablon <span class="text-danger">*</span></label>
                         <select name="template_id" class="form-select" required>
-                            <option value="">Şablon seçin...</option>
+                            <option value="">-- Şablon Seç --</option>
                             {% for template in templates %}
                             <option value="{{ template.id }}">{{ template.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    
+                    <div class="mb-3">
+                        <label class="form-label">Aralık (dk) <span class="text-danger">*</span></label>
+                        <input type="number" name="interval_minutes" class="form-control" value="60" min="1" required>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Gruplar <span class="text-danger">*</span></label>
-                        <div class="border rounded-3 p-3" style="max-height: 200px; overflow-y: auto;">
-                            {% for group in groups %}
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="groups" value="{{ group.id }}" id="group{{ group.id }}" checked>
-                                <label class="form-check-label" for="group{{ group.id }}">
-                                    {{ group.name }}
-                                    <span class="text-muted small">({{ group.chat_id }})</span>
-                                </label>
-                            </div>
-                            {% empty %}
-                            <p class="text-muted mb-0">Henüz grup eklenmemiş</p>
-                            {% endfor %}
+                        {% for group in groups %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="groups" value="{{ group.id }}" id="taskGroup{{ group.id }}">
+                            <label class="form-check-label" for="taskGroup{{ group.id }}">{{ group.name }}</label>
                         </div>
+                        {% endfor %}
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Kaydet
-                    </button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Kaydet</button>
                 </div>
             </form>
         </div>

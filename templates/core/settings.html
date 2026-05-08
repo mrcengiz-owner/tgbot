@@ -4,140 +4,94 @@
 {% block page_title %}Ayarlar{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-    <!-- Bot Token Settings -->
-    <div class="col-lg-6">
-        <div class="card-modern">
-            <div class="card-header-modern">
-                <h5><i class="fas fa-key"></i>Bot Token Ayarları</h5>
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-robot me-2"></i>Telegram API Ayarları
             </div>
-            <div class="card-body-modern">
-                <form method="POST">
+            <div class="card-body">
+                <form method="POST" action="{% url 'settings' %}">
                     {% csrf_token %}
-                    <div class="mb-4">
-                        <label class="form-label">
-                            <i class="fas fa-robot me-2 text-primary"></i>Ana Bot Token
-                        </label>
-                        <input type="text" name="main_bot_token" class="form-control" 
-                               value="8058870569:AAFfuGffgNC15hED-nlUIfqQYSewf8RND4M" 
-                               placeholder="123456789:ABCdef...">
-                        <small class="text-muted mt-2 d-block">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Telegram Bot API token'ı
-                        </small>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Bot Token</label>
+                        <input type="password" name="main_bot_token" class="form-control" placeholder="Telegram Bot Token" value="{{ bot_token|default:'' }}">
+                        <small class="text-muted">Mesaj göndermek için kullanılacak ana bot token.</small>
                     </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Kaydet
-                    </button>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Kaydet
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
         
-        <!-- Database Info -->
-        <div class="card-modern mt-4">
-            <div class="card-header-modern">
-                <h5><i class="fas fa-database"></i>Veritabanı Bilgileri</h5>
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-database me-2"></i>Webhook Ayarları
             </div>
-            <div class="card-body-modern p-0">
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-database text-primary me-3"></i>
-                            <span>Veritabanı Tipi</span>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 rounded-3" style="background: #f8f9fa;">
+                            <h6 class="mb-2">Webhook Durumu</h6>
+                            <span class="badge bg-success">Aktif</span>
                         </div>
-                        <span class="badge badge-primary">SQLite</span>
                     </div>
-                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-layer-group text-success me-3"></i>
-                            <span>Toplam Gruplar</span>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded-3" style="background: #f8f9fa;">
+                            <h6 class="mb-2">Son Güncelleme</h6>
+                            <small class="text-muted">{{ request.session.last_webhook_update|default:"Belirtilmemiş" }}</small>
                         </div>
-                        <span class="badge badge-success">{{ groups.count }}</span>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-link me-2"></i>Hızlı Bağlantılar
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="{% url 'set_webhook' %}" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                        <i class="fas fa-plug text-success"></i>
+                        Webhook Kur
+                    </a>
+                    <a href="{% url 'delete_webhook' %}" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                        <i class="fas fa-unlink text-danger"></i>
+                        Webhook Kaldır
+                    </a>
+                    <a href="/admin/" class="list-group-item list-group-item-action d-flex align-items-center gap-2" target="_blank">
+                        <i class="fas fa-cog text-primary"></i>
+                        Django Admin Paneli
+                    </a>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- System Info -->
-    <div class="col-lg-6">
-        <div class="card-modern">
-            <div class="card-header-modern">
-                <h5><i class="fas fa-microchip"></i>Sistem Bilgileri</h5>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>Sistem Bilgisi
             </div>
-            <div class="card-body-modern p-0">
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fab fa-python text-success me-3"></i>
-                            <span>Django Sürümü</span>
-                        </div>
-                        <span class="badge badge-success">6.0.5</span>
-                    </div>
-                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-robot text-primary me-3"></i>
-                            <span>python-telegram-bot</span>
-                        </div>
-                        <span class="badge badge-primary">20.7</span>
-                    </div>
-                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fab fa-python text-info me-3"></i>
-                            <span>Python Sürümü</span>
-                        </div>
-                        <span class="badge badge-info">3.x</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Help -->
-        <div class="card-modern mt-4">
-            <div class="card-header-modern">
-                <h5><i class="fas fa-circle-question"></i>Yardım</h5>
-            </div>
-            <div class="card-body-modern">
-                <div class="accordion" id="helpAccordion">
-                    <div class="accordion-item border-0 mb-2">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed bg-light rounded-3" type="button" 
-                                    data-bs-toggle="collapse" data-bs-target="#help1" style="padding: 16px;">
-                                <i class="fas fa-question-circle text-primary me-2"></i>
-                                Chat ID Nasıl Alınır?
-                            </button>
-                        </h2>
-                        <div id="help1" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
-                            <div class="accordion-body pt-3">
-                                <ol class="mb-0 small text-muted">
-                                    <li class="mb-2">Gruba eklemek istediğiniz botu gruba admin olarak ekleyin</li>
-                                    <li class="mb-2">@userinfobot veya @getidsbot botlarından birini gruba ekleyin</li>
-                                    <li>Bot size grubun Chat ID'sini verecektir (genellikle -100 ile başlar)</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="accordion-item border-0">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed bg-light rounded-3" type="button" 
-                                    data-bs-toggle="collapse" data-bs-target="#help2" style="padding: 16px;">
-                                <i class="fas fa-key text-primary me-2"></i>
-                                Bot Token Nasıl Alınır?
-                            </button>
-                        </h2>
-                        <div id="help2" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
-                            <div class="accordion-body pt-3">
-                                <ol class="mb-0 small text-muted">
-                                    <li class="mb-2">@BotFather'a Telegram'dan mesaj atın</li>
-                                    <li class="mb-2">/newbot komutunu gönderin</li>
-                                    <li class="mb-2">Bot adını ve kullanıcı adını belirleyin</li>
-                                    <li class="mb-2">Size verilen token'ı kopyalayın</li>
-                                    <li>Bu token'ı gruba ekleyin ve botu gruba ekleyin</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td class="border-0">Django Versiyonu</td>
+                        <td class="border-0 text-end fw-semibold">6.0+</td>
+                    </tr>
+                    <tr>
+                        <td>Aktif Gruplar</td>
+                        <td class="text-end fw-semibold">{{ groups.count }}</td>
+                    </tr>
+                    <tr>
+                        <td>Aktif Şablonlar</td>
+                        <td class="text-end fw-semibold">{{ templates.count }}</td>
+                    </tr>
+                </table>
             </div>
         </div>
     </div>
