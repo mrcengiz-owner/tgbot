@@ -18,6 +18,10 @@ urlpatterns = [
     path('sablonlar/sil/<int:pk>/', views.template_delete, name='template_delete'),
     path('gonder/', views.send_message_view, name='send_message'),
     path('gonder/gonder/', views.send_message, name='send'),
+    path('planli/', views.scheduled_tasks, name='scheduled_tasks'),
+    path('planli/ekle/', views.scheduled_task_add, name='scheduled_task_add'),
+    path('planli/durum/<int:pk>/', views.scheduled_task_toggle, name='scheduled_task_toggle'),
+    path('planli/sil/<int:pk>/', views.scheduled_task_delete, name='scheduled_task_delete'),
     path('api/logs/', views.get_logs, name='get_logs'),
     path('api/template/<int:pk>/', views.get_template, name='get_template'),
 ]

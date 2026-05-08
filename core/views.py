@@ -5,7 +5,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 import requests
-from .models import TelegramGroup, MessageTemplate, MessageLog
+from .models import TelegramGroup, MessageTemplate, MessageLog, ScheduledTask
 
 
 @login_required
@@ -230,3 +230,61 @@ def get_template(request, pk):
         'content': template.content,
         'description': template.description
     })
+
+
+@login_required
+def scheduled_tasks(request):
+    """Planlanmış görevler sayfası"""
+    tasks = ScheduledTask.objects.all().prefetch_related('groups')
+    groups = TelegramGroup.objects.filter(is_active=True)
+    templates = MessageTemplate.objects.filter(is_active=True)
+    return render(request, 'core/scheduled_tasks.html', {
+        'tasks': tasks,
+        'groups': groups,
+        'templates': templates
+    })
+
+
+@require_http_methods(["POST"])
+def scheduled_task_add(request):
+    """Planlanmış görev ekle"""
+    name = request.POST.get('name')
+    template_id = request.POST.get('template_id')
+    interval_minutes = request.POST.get('interval_minutes', 60)
+    selected_groups = request.POST.getlist('groups')
+    
+    if not selected_groups:
+        messages.error(request, 'En az bir grup seçmelisiniz!')
+        return redirect('scheduled_tasks')
+    
+    template = get_object_or_404(MessageTemplate, pk=template_id)
+    
+    task = ScheduledTask.objects.create(
+        name=name,
+        template=template,
+        interval_minutes=int(interval_minutes)
+    )
+    task.groups.set(selected_groups)
+    
+    messages.success(request, 'Planlanmış görev oluşturuldu!')
+    return redirect('scheduled_tasks')
+
+
+@require_http_methods(["POST"])
+def scheduled_task_toggle(request, pk):
+    """Planlanmış görev aktif/pasif"""
+    task = get_object_or_404(ScheduledTask, pk=pk)
+    task.is_active = not task.is_active
+    task.save()
+    status = "aktifleştirildi" if task.is_active else "pasifleştirildi"
+    messages.success(request, f'Görev {status}!')
+    return redirect('scheduled_tasks')
+
+
+@require_http_methods(["POST"])
+def scheduled_task_delete(request, pk):
+    """Planlanmış görev sil"""
+    task = get_object_or_404(ScheduledTask, pk=pk)
+    task.delete()
+    messages.success(request, 'Görev silindi!')
+    return redirect('scheduled_tasks')

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import TelegramGroup, MessageTemplate, MessageLog, Settings
+from .models import TelegramGroup, MessageTemplate, MessageLog, Settings, ScheduledTask
 
 
 @admin.register(TelegramGroup)
@@ -32,3 +32,12 @@ class SettingsAdmin(admin.ModelAdmin):
     list_display = ['key', 'value', 'updated_at']
     search_fields = ['key', 'value']
     ordering = ['key']
+
+
+@admin.register(ScheduledTask)
+class ScheduledTaskAdmin(admin.ModelAdmin):
+    list_display = ['name', 'template', 'interval_minutes', 'is_active', 'last_run', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['name', 'template__name']
+    ordering = ['-created_at']
+    filter_horizontal = ['groups']

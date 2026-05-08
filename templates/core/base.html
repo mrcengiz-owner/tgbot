@@ -32,11 +32,7 @@
             --topbar-height: 70px;
         }
         
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -45,7 +41,6 @@
             min-height: 100vh;
         }
         
-        /* Sidebar */
         .sidebar {
             position: fixed;
             top: 0;
@@ -80,24 +75,10 @@
             box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
         }
         
-        .sidebar-brand h4 {
-            font-size: 18px;
-            font-weight: 700;
-            margin: 0;
-            letter-spacing: -0.5px;
-        }
+        .sidebar-brand h4 { font-size: 18px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
+        .sidebar-brand span { font-size: 11px; color: var(--gray-400); font-weight: 400; }
         
-        .sidebar-brand span {
-            font-size: 11px;
-            color: var(--gray-400);
-            font-weight: 400;
-        }
-        
-        .sidebar-nav {
-            flex: 1;
-            padding: 20px 12px;
-            overflow-y: auto;
-        }
+        .sidebar-nav { flex: 1; padding: 20px 12px; overflow-y: auto; }
         
         .nav-label {
             font-size: 11px;
@@ -106,12 +87,11 @@
             color: var(--gray-500);
             padding: 0 12px;
             margin-bottom: 8px;
+            margin-top: 16px;
             font-weight: 600;
         }
         
-        .nav-item {
-            margin-bottom: 4px;
-        }
+        .nav-item { margin-bottom: 4px; }
         
         .nav-link {
             display: flex;
@@ -125,10 +105,7 @@
             gap: 14px;
         }
         
-        .nav-link:hover {
-            background: rgba(255,255,255,0.05);
-            color: #fff;
-        }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
         
         .nav-link.active {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
@@ -136,37 +113,12 @@
             box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
         }
         
-        .nav-link i {
-            width: 22px;
-            text-align: center;
-            font-size: 18px;
-        }
+        .nav-link i { width: 22px; text-align: center; font-size: 18px; }
+        .nav-link span { flex: 1; }
         
-        .nav-link span {
-            flex: 1;
-        }
+        .main-wrapper { margin-left: var(--sidebar-width); min-height: 100vh; flex: 1; }
+        .content-container { max-width: 1400px; }
         
-        .nav-badge {
-            background: var(--primary);
-            color: #fff;
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-        
-        /* Main Content */
-        .main-wrapper {
-            margin-left: var(--sidebar-width);
-            min-height: 100vh;
-            flex: 1;
-        }
-        
-        .content-container {
-            max-width: 1400px;
-        }
-        
-        /* Topbar */
         .topbar {
             background: #fff;
             height: var(--topbar-height);
@@ -180,41 +132,9 @@
             z-index: 100;
         }
         
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
+        .page-title { font-size: 22px; font-weight: 700; color: var(--gray-800); margin: 0; }
         
-        .page-title {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--gray-800);
-            margin: 0;
-        }
-        
-        .breadcrumb-nav {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: var(--gray-500);
-        }
-        
-        .breadcrumb-nav a {
-            color: var(--gray-500);
-            text-decoration: none;
-        }
-        
-        .breadcrumb-nav a:hover {
-            color: var(--primary);
-        }
-        
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
+        .topbar-right { display: flex; align-items: center; gap: 16px; }
         
         .topbar-icon-btn {
             width: 44px;
@@ -228,75 +148,12 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s ease;
-            position: relative;
         }
         
-        .topbar-icon-btn:hover {
-            background: var(--gray-200);
-            color: var(--gray-800);
-        }
+        .topbar-icon-btn:hover { background: var(--gray-200); color: var(--gray-800); }
         
-        .topbar-icon-btn .badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--danger);
-            color: #fff;
-            font-size: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        .content-area { padding: 30px; }
         
-        .user-menu {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 6px 12px 6px 6px;
-            border-radius: 50px;
-            background: var(--gray-100);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .user-menu:hover {
-            background: var(--gray-200);
-        }
-        
-        .user-avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--info) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        
-        .user-info h6 {
-            margin: 0;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--gray-800);
-        }
-        
-        .user-info span {
-            font-size: 11px;
-            color: var(--gray-500);
-        }
-        
-        /* Content Area */
-        .content-area {
-            padding: 30px;
-        }
-        
-        /* Cards */
         .card-modern {
             background: #fff;
             border-radius: 16px;
@@ -305,36 +162,8 @@
             transition: all 0.3s ease;
         }
         
-        .card-modern:hover {
-            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
-        }
+        .card-modern:hover { box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
         
-        .card-header-modern {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--gray-100);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .card-header-modern h5 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .card-header-modern h5 i {
-            color: var(--primary);
-        }
-        
-        .card-body-modern {
-            padding: 24px;
-        }
-        
-        /* Stats Cards */
         .stat-card {
             background: #fff;
             border-radius: 16px;
@@ -360,10 +189,7 @@
         .stat-card.red::before { background: var(--danger); }
         .stat-card.cyan::before { background: var(--info); }
         
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
         
         .stat-icon {
             width: 56px;
@@ -382,35 +208,9 @@
         .stat-card.red .stat-icon { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
         .stat-card.cyan .stat-icon { background: rgba(6, 182, 212, 0.1); color: var(--info); }
         
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--gray-800);
-            line-height: 1;
-            margin-bottom: 8px;
-        }
+        .stat-value { font-size: 32px; font-weight: 700; color: var(--gray-800); line-height: 1; margin-bottom: 8px; }
+        .stat-label { font-size: 14px; color: var(--gray-500); font-weight: 500; }
         
-        .stat-label {
-            font-size: 14px;
-            color: var(--gray-500);
-            font-weight: 500;
-        }
-        
-        .stat-trend {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 20px;
-            margin-top: 12px;
-        }
-        
-        .stat-trend.up { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-        .stat-trend.down { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
-        
-        /* Buttons */
         .btn-primary {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             border: none;
@@ -422,10 +222,7 @@
             transition: all 0.3s ease;
         }
         
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
-        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5); }
         
         .btn-outline-primary {
             border: 2px solid var(--gray-300);
@@ -437,59 +234,8 @@
             transition: all 0.2s ease;
         }
         
-        .btn-outline-primary:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: rgba(99, 102, 241, 0.05);
-        }
+        .btn-outline-primary:hover { border-color: var(--primary); color: var(--primary); background: rgba(99, 102, 241, 0.05); }
         
-        .btn-success { background: var(--success); border: none; }
-        .btn-danger { background: var(--danger); border: none; }
-        .btn-warning { background: var(--warning); border: none; color: #fff; }
-        
-        /* Tables */
-        .table-modern {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-        
-        .table-modern thead th {
-            background: var(--gray-50);
-            padding: 14px 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--gray-500);
-            border: none;
-        }
-        
-        .table-modern tbody td {
-            padding: 18px 20px;
-            border-bottom: 1px solid var(--gray-100);
-            vertical-align: middle;
-        }
-        
-        .table-modern tbody tr:hover {
-            background: var(--gray-50);
-        }
-        
-        /* Badges */
-        .badge {
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 12px;
-        }
-        
-        .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-        .badge-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
-        .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-        .badge-info { background: rgba(6, 182, 212, 0.1); color: var(--info); }
-        .badge-primary { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
-        
-        /* Forms */
         .form-control, .form-select {
             border: 2px solid var(--gray-200);
             border-radius: 12px;
@@ -503,19 +249,7 @@
             box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
         }
         
-        .form-label {
-            font-weight: 600;
-            color: var(--gray-700);
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-        
-        /* Modal */
-        .modal-content {
-            border: none;
-            border-radius: 20px;
-            overflow: hidden;
-        }
+        .modal-content { border: none; border-radius: 20px; overflow: hidden; }
         
         .modal-header {
             background: linear-gradient(135deg, var(--dark) 0%, var(--gray-800) 100%);
@@ -524,27 +258,10 @@
             border: none;
         }
         
-        .modal-header .btn-close {
-            filter: brightness(0) invert(1);
-        }
+        .modal-header .btn-close { filter: brightness(0) invert(1); }
+        .modal-body { padding: 28px; }
+        .modal-footer { padding: 20px 28px; border-top: 1px solid var(--gray-100); }
         
-        .modal-body {
-            padding: 28px;
-        }
-        
-        .modal-footer {
-            padding: 20px 28px;
-            border-top: 1px solid var(--gray-100);
-        }
-        
-        /* Alerts */
-        .alert {
-            border: none;
-            border-radius: 12px;
-            padding: 16px 20px;
-        }
-        
-        /* Group Cards */
         .group-card {
             background: #fff;
             border-radius: 16px;
@@ -560,43 +277,12 @@
             border-color: var(--primary);
         }
         
-        .group-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
-        }
+        .group-card-title { font-size: 18px; font-weight: 700; color: var(--gray-800); margin: 0 0 4px 0; }
+        .group-card-id { font-size: 12px; color: var(--gray-500); font-family: monospace; }
+        .group-card-desc { font-size: 14px; color: var(--gray-600); line-height: 1.6; margin-bottom: 20px; }
+        .group-card-actions { display: flex; gap: 10px; }
         
-        .group-card-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--gray-800);
-            margin: 0 0 4px 0;
-        }
-        
-        .group-card-id {
-            font-size: 12px;
-            color: var(--gray-500);
-            font-family: monospace;
-        }
-        
-        .group-card-desc {
-            font-size: 14px;
-            color: var(--gray-600);
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-        
-        .group-card-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-        }
+        .empty-state { text-align: center; padding: 60px 20px; }
         
         .empty-state-icon {
             width: 100px;
@@ -611,77 +297,36 @@
             color: var(--gray-400);
         }
         
-        .empty-state h5 {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--gray-800);
-            margin-bottom: 8px;
-        }
+        .empty-state h5 { font-size: 20px; font-weight: 700; color: var(--gray-800); margin-bottom: 8px; }
+        .empty-state p { color: var(--gray-500); font-size: 14px; }
         
-        .empty-state p {
-            color: var(--gray-500);
-            font-size: 14px;
-        }
+        .badge { padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 12px; }
+        .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .badge-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
         
-        /* Quick Actions */
-        .quick-action-btn {
-            background: #fff;
-            border: 2px dashed var(--gray-300);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            color: var(--gray-600);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: block;
-        }
+        .user-menu { display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; border-radius: 50px; background: var(--gray-100); cursor: pointer; }
+        .user-menu:hover { background: var(--gray-200); }
+        .user-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--info) 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 14px; }
         
-        .quick-action-btn:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: rgba(99, 102, 241, 0.05);
-        }
-        
-        .quick-action-btn i {
-            font-size: 28px;
-            margin-bottom: 12px;
-            display: block;
-        }
-        
-        /* Responsive */
         @media (max-width: 992px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            .main-wrapper {
-                margin-left: 0;
-            }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+            .main-wrapper { margin-left: 0; }
         }
         
         @media (max-width: 768px) {
-            .content-area {
-                padding: 20px;
-            }
-            .topbar {
-                padding: 0 20px;
-            }
-            .stat-value {
-                font-size: 28px;
-            }
+            .content-area { padding: 20px; }
+            .topbar { padding: 0 20px; }
+            .stat-value { font-size: 28px; }
         }
     </style>
 </head>
 <body>
     <div class="d-flex">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <div class="sidebar-brand-icon">
-                    <i class="fab fa-telegram-plane"></i>
-                </div>
+                <div class="sidebar-brand-icon"><i class="fab fa-telegram-plane"></i></div>
                 <div>
                     <h4>Telegram Panel</h4>
                     <span>Mesaj Yönetim Sistemi</span>
@@ -692,82 +337,70 @@
                 <div class="nav-label">Ana Menü</div>
                 <div class="nav-item">
                     <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                        <i class="fas fa-chart-pie"></i>
-                        <span>Dashboard</span>
+                        <i class="fas fa-chart-pie"></i><span>Dashboard</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a href="{% url 'groups' %}" class="nav-link {% if 'gruplar' in request.path %}active{% endif %}">
-                        <i class="fas fa-layer-group"></i>
-                        <span>Gruplar</span>
-                        {% if request.session.group_count %}
-                        <span class="nav-badge">{{ request.session.group_count }}</span>
-                        {% endif %}
+                        <i class="fas fa-layer-group"></i><span>Gruplar</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a href="{% url 'templates' %}" class="nav-link {% if 'sablon' in request.path %}active{% endif %}">
-                        <i class="fas fa-file-lines"></i>
-                        <span>Hazır Mesajlar</span>
+                        <i class="fas fa-file-lines"></i><span>Hazır Mesajlar</span>
                     </a>
                 </div>
                 <div class="nav-item">
                     <a href="{% url 'send_message' %}" class="nav-link {% if 'gonder' in request.path %}active{% endif %}">
-                        <i class="fas fa-paper-plane"></i>
-                        <span>Gönderimler</span>
+                        <i class="fas fa-paper-plane"></i><span>Gönderimler</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{% url 'scheduled_tasks' %}" class="nav-link {% if 'planli' in request.path %}active{% endif %}">
+                        <i class="fas fa-clock"></i><span>Planlı Gönderimler</span>
                     </a>
                 </div>
                 
-                <div class="nav-label mt-4">Sistem</div>
+                <div class="nav-label">Sistem</div>
                 <div class="nav-item">
                     <a href="{% url 'settings' %}" class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-                        <i class="fas fa-gear"></i>
-                        <span>Ayarlar</span>
+                        <i class="fas fa-gear"></i><span>Ayarlar</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{% url 'logout' %}" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i><span>Çıkış Yap</span>
                     </a>
                 </div>
             </nav>
             
             <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="user-avatar" style="width: 40px; height: 40px; font-size: 14px;">
-                        A
-                    </div>
+                    <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
                     <div>
-                        <div style="font-size: 14px; font-weight: 600;">Admin</div>
+                        <div style="font-size: 14px; font-weight: 600;">{{ user.username }}</div>
                         <div style="font-size: 11px; color: var(--gray-400);">Yönetici</div>
                     </div>
                 </div>
             </div>
         </aside>
         
-        <!-- Main Content -->
         <div class="main-wrapper">
-            <!-- Topbar -->
             <header class="topbar">
-                <div class="topbar-left">
+                <div class="d-flex align-items-center gap-3">
                     <button class="btn d-lg-none" onclick="toggleSidebar()" style="background: none; border: none;">
                         <i class="fas fa-bars fa-lg"></i>
                     </button>
-                    <div>
-                        <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
-                    </div>
+                    <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
                 </div>
                 
                 <div class="topbar-right">
                     <span style="font-size: 13px; color: var(--gray-500);">
                         <i class="far fa-clock me-1"></i>{% now "d M Y, H:i" %}
                     </span>
-                    <button class="topbar-icon-btn">
-                        <i class="fas fa-bell"></i>
-                        <span class="badge">3</span>
-                    </button>
-                    <button class="topbar-icon-btn">
-                        <i class="fas fa-question-circle"></i>
-                    </button>
                 </div>
             </header>
             
-            <!-- Content -->
             <main class="content-area">
                 <div class="content-container mx-auto">
                 {% if messages %}

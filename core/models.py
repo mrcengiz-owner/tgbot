@@ -88,3 +88,27 @@ class Settings(models.Model):
     
     def __str__(self):
         return self.key
+
+
+class ScheduledTask(models.Model):
+    """Planlanmış görevler"""
+    name = models.CharField(max_length=255, verbose_name="Görev Adı")
+    template = models.ForeignKey(
+        MessageTemplate, 
+        on_delete=models.CASCADE, 
+        verbose_name="Şablon"
+    )
+    groups = models.ManyToManyField(TelegramGroup, verbose_name="Gruplar")
+    interval_minutes = models.IntegerField(default=60, verbose_name="Aralık (dk)")
+    is_active = models.BooleanField(default=True, verbose_name="Aktif mi?")
+    last_run = models.DateTimeField(null=True, blank=True, verbose_name="Son Çalışma")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Planlanmış Görev"
+        verbose_name_plural = "Planlanmış Görevler"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.name} - {self.interval_minutes} dk"
