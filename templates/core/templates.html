@@ -27,12 +27,15 @@
                     </div>
                     <p class="text-muted small mb-3" style="max-height: 60px; overflow: hidden;">{{ template.content|truncatechars:100 }}</p>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary flex-fill" onclick="editTemplate({{ template.id }})">
+                        <button class="btn btn-sm btn-outline-primary flex-fill" data-bs-toggle="modal" data-bs-target="#editTemplateModal{{ template.id }}">
                             <i class="fas fa-edit me-1"></i>Düzenle
                         </button>
-                        <a href="{% url 'template_delete' template.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Şablonu silmek istediğinize emin misiniz?')">
-                            <i class="fas fa-trash"></i>
-                        </a>
+                        <form action="{% url 'template_delete' template.id %}" method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Şablonu silmek istediğinize emin misiniz?')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -86,4 +89,39 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Template Modals -->
+{% for template in templates %}
+<div class="modal fade" id="editTemplateModal{{ template.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Şablon Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'template_edit' template.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Şablon Adı <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" value="{{ template.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mesaj İçeriği <span class="text-danger">*</span></label>
+                        <textarea name="content" class="form-control" rows="5" required>{{ template.content }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <textarea name="description" class="form-control" rows="2">{{ template.description }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

@@ -34,13 +34,19 @@
                     {% endif %}
                     
                     <div class="d-flex gap-2">
-                        <a href="{% url 'group_toggle' group.id %}" class="btn btn-sm {% if group.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} flex-fill">
-                            <i class="fas {% if group.is_active %}fa-pause{% else %}fa-play{% endif %} me-1"></i>
-                            {{ group.is_active|yesno:"Pasifleştir,Aktifleştir" }}
-                        </a>
-                        <a href="{% url 'group_delete' group.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Grubu silmek istediğinize emin misiniz?')">
-                            <i class="fas fa-trash"></i>
-                        </a>
+                        <form action="{% url 'group_toggle' group.id %}" method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if group.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} flex-fill">
+                                <i class="fas {% if group.is_active %}fa-pause{% else %}fa-play{% endif %} me-1"></i>
+                                {{ group.is_active|yesno:"Pasifleştir,Aktifleştir" }}
+                            </button>
+                        </form>
+                        <form action="{% url 'group_delete' group.id %}" method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Grubu silmek istediğinize emin misiniz?')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
                 <div class="card-footer text-muted small">
