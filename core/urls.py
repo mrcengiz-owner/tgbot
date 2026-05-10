@@ -22,6 +22,7 @@ urlpatterns = [
     path('planli/ekle/', views.scheduled_task_add, name='scheduled_task_add'),
     path('planli/durum/<int:pk>/', views.scheduled_task_toggle, name='scheduled_task_toggle'),
     path('planli/sil/<int:pk>/', views.scheduled_task_delete, name='scheduled_task_delete'),
+    path('planli/duzenle/<int:pk>/', views.scheduled_task_edit, name='scheduled_task_edit'),
     path('api/logs/', views.get_logs, name='get_logs'),
     path('api/template/<int:pk>/', views.get_template, name='get_template'),
 ]

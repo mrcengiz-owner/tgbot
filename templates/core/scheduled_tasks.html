@@ -56,6 +56,9 @@
                                 {{ task.is_active|yesno:"Durdur,Başlat" }}
                             </button>
                         </form>
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editTaskModal{{ task.id }}">
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <form action="{% url 'scheduled_task_delete' task.id %}" method="POST" style="display:inline;">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Görevi silmek istediğinize emin misiniz?')">
@@ -129,4 +132,52 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Task Modals -->
+{% for task in tasks %}
+<div class="modal fade" id="editTaskModal{{ task.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Görev Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'scheduled_task_edit' task.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Görev Adı <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" value="{{ task.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Şablon <span class="text-danger">*</span></label>
+                        <select name="template_id" class="form-select" required>
+                            {% for template in templates %}
+                            <option value="{{ template.id }}" {% if template.id == task.template.id %}selected{% endif %}>{{ template.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Aralık (dk) <span class="text-danger">*</span></label>
+                        <input type="number" name="interval_minutes" class="form-control" value="{{ task.interval_minutes }}" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Gruplar <span class="text-danger">*</span></label>
+                        {% for group in groups %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="groups" value="{{ group.id }}" id="editTaskGroup{{ task.id }}_{{ group.id }}" {% if group in task.groups.all %}checked{% endif %}>
+                            <label class="form-check-label" for="editTaskGroup{{ task.id }}_{{ group.id }}">{{ group.name }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

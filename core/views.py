@@ -288,3 +288,24 @@ def scheduled_task_delete(request, pk):
     task.delete()
     messages.success(request, 'Görev silindi!')
     return redirect('scheduled_tasks')
+
+
+@require_http_methods(["POST"])
+def scheduled_task_edit(request, pk):
+    """Planlanmış görev düzenle"""
+    task = get_object_or_404(ScheduledTask, pk=pk)
+    task.name = request.POST.get('name')
+    template_id = request.POST.get('template_id')
+    interval_minutes = request.POST.get('interval_minutes', 60)
+    selected_groups = request.POST.getlist('groups')
+    
+    if template_id:
+        task.template = get_object_or_404(MessageTemplate, pk=template_id)
+    task.interval_minutes = int(interval_minutes)
+    task.save()
+    
+    if selected_groups:
+        task.groups.set(selected_groups)
+    
+    messages.success(request, 'Görev güncellendi!')
+    return redirect('scheduled_tasks')
