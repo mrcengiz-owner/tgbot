@@ -14,6 +14,7 @@ from .models import (
     ScheduledTask,
     TxTracker,
     TxRateCache,
+    WebhookLog,
 )
 from .services import RateService, ExplorerService, TxService
 
@@ -363,6 +364,18 @@ def tx_tracker_dashboard(request):
             'enabled_groups': enabled_groups,
             'all_groups': TelegramGroup.objects.all().order_by('name'),
             'rate_cache': TxRateCache.objects.all()[:20],
+            'webhook_logs': WebhookLog.objects.all()[:25],
+            'webhook_stats': {
+                'total': WebhookLog.objects.count(),
+                'processed': WebhookLog.objects.filter(action='processed').count(),
+                'no_tx': WebhookLog.objects.filter(action='no_tx').count(),
+                'no_group': WebhookLog.objects.filter(action='no_group').count(),
+                'ignored': WebhookLog.objects.filter(action='ignored').count(),
+                'error': WebhookLog.objects.filter(action='error').count(),
+                'last_24h': WebhookLog.objects.filter(
+                    received_at__gte=timezone.now() - timezone.timedelta(hours=24)
+                ).count(),
+            },
         },
     )
 
@@ -412,6 +425,18 @@ def tx_lookup(request):
             'enabled_groups': TelegramGroup.objects.filter(is_active=True, tx_tracker_enabled=True),
             'all_groups': TelegramGroup.objects.all().order_by('name'),
             'rate_cache': TxRateCache.objects.all()[:20],
+            'webhook_logs': WebhookLog.objects.all()[:25],
+            'webhook_stats': {
+                'total': WebhookLog.objects.count(),
+                'processed': WebhookLog.objects.filter(action='processed').count(),
+                'no_tx': WebhookLog.objects.filter(action='no_tx').count(),
+                'no_group': WebhookLog.objects.filter(action='no_group').count(),
+                'ignored': WebhookLog.objects.filter(action='ignored').count(),
+                'error': WebhookLog.objects.filter(action='error').count(),
+                'last_24h': WebhookLog.objects.filter(
+                    received_at__gte=timezone.now() - timezone.timedelta(hours=24)
+                ).count(),
+            },
             'lookup_result': result,
         },
     )

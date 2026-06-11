@@ -214,3 +214,41 @@ class TxRateCache(models.Model):
 
     def __str__(self):
         return f"{self.asset} @ {self.source} = {self.rate} (cache)"
+
+
+class WebhookLog(models.Model):
+    """Telegram'dan gelen her webhook çağrısının ham kaydı - debug için."""
+
+    chat_id = models.CharField(
+        max_length=100, blank=True, null=True, db_index=True, verbose_name="Chat ID"
+    )
+    chat_type = models.CharField(max_length=32, blank=True, null=True, verbose_name="Sohbet Türü")
+    chat_title = models.CharField(
+        max_length=255, blank=True, null=True, verbose_name="Grup/Chat Adı"
+    )
+    user_id = models.BigIntegerField(blank=True, null=True, verbose_name="Kullanıcı ID")
+    username = models.CharField(
+        max_length=128, blank=True, null=True, verbose_name="Kullanıcı Adı"
+    )
+    message_id = models.BigIntegerField(blank=True, null=True, verbose_name="Mesaj ID")
+    text = models.TextField(blank=True, null=True, verbose_name="Mesaj İçeriği")
+    has_tx_hash = models.BooleanField(default=False, verbose_name="Tx Hash Var mı?")
+    tx_hash = models.CharField(
+        max_length=128, blank=True, null=True, verbose_name="Bulunan Tx Hash"
+    )
+    action = models.CharField(
+        max_length=32,
+        default='ignored',
+        verbose_name="İşlem",
+        help_text="processed | ignored | error | no_tx | no_group",
+    )
+    error_message = models.TextField(blank=True, null=True, verbose_name="Hata")
+    received_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Webhook Log"
+        verbose_name_plural = "Webhook Logları"
+        ordering = ['-received_at']
+
+    def __str__(self):
+        return f"[{self.received_at:%d.%m.%Y %H:%M:%S}] {self.action} - {self.chat_id}"

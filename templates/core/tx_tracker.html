@@ -4,6 +4,96 @@
 {% block page_title %}Kripto TX Takip{% endblock %}
 
 {% block content %}
+<!-- Canlı Webhook Logları (debug için) -->
+<div class="card mb-4" style="border:2px solid {% if webhook_stats.last_24h == 0 %}#ef4444{% else %}#10b981{% endif %};">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background:{% if webhook_stats.last_24h == 0 %}#ef4444{% else %}#10b981{% endif %};color:#fff;">
+        <span>
+            <i class="fas fa-satellite-dish me-2"></i>Canlı Webhook Logları
+            {% if webhook_stats.last_24h == 0 %}
+                <span class="badge bg-light text-danger ms-2">⚠️ Son 24 saatte hiç webhook gelmedi</span>
+            {% else %}
+                <span class="badge bg-light text-success ms-2">✅ Son 24 saatte {{ webhook_stats.last_24h }} mesaj</span>
+            {% endif %}
+        </span>
+        <div>
+            <a href="/webhook/set/" target="_blank" class="btn btn-sm btn-light me-1">
+                <i class="fas fa-sync"></i> Webhook Yenile
+            </a>
+            <a href="/webhook/info/" target="_blank" class="btn btn-sm btn-light">
+                <i class="fas fa-info-circle"></i> Durum
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-2 mb-3 text-center">
+            <div class="col"><span class="badge bg-success">processed: {{ webhook_stats.processed }}</span></div>
+            <div class="col"><span class="badge bg-warning text-dark">no_tx: {{ webhook_stats.no_tx }}</span></div>
+            <div class="col"><span class="badge bg-secondary">no_group: {{ webhook_stats.no_group }}</span></div>
+            <div class="col"><span class="badge bg-dark">ignored: {{ webhook_stats.ignored }}</span></div>
+            <div class="col"><span class="badge bg-danger">error: {{ webhook_stats.error }}</span></div>
+            <div class="col"><span class="badge bg-info">toplam: {{ webhook_stats.total }}</span></div>
+        </div>
+        {% if webhook_logs %}
+        <div class="table-responsive" style="max-height:400px;overflow-y:auto;">
+            <table class="table table-sm table-hover mb-0 small">
+                <thead class="sticky-top bg-white">
+                    <tr>
+                        <th>Zaman</th>
+                        <th>Chat ID</th>
+                        <th>Grup</th>
+                        <th>İşlem</th>
+                        <th>Tx?</th>
+                        <th>Mesaj (ilk 80 karakter)</th>
+                        <th>Hata</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in webhook_logs %}
+                    <tr>
+                        <td class="text-muted">{{ l.received_at|date:"H:i:s" }}</td>
+                        <td><code class="small">{{ l.chat_id|default:"-" }}</code></td>
+                        <td>{{ l.chat_title|default:"-"|truncatechars:20 }}</td>
+                        <td>
+                            {% if l.action == 'processed' %}
+                                <span class="badge bg-success">processed</span>
+                            {% elif l.action == 'no_tx' %}
+                                <span class="badge bg-warning text-dark">no_tx</span>
+                            {% elif l.action == 'no_group' %}
+                                <span class="badge bg-secondary">no_group</span>
+                            {% elif l.action == 'ignored' %}
+                                <span class="badge bg-dark">ignored</span>
+                            {% elif l.action == 'error' %}
+                                <span class="badge bg-danger">error</span>
+                            {% elif l.action == 'kayit' %}
+                                <span class="badge bg-info">kayit</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ l.action }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if l.has_tx_hash %}
+                                <i class="fas fa-check text-success"></i>
+                                <code class="small">{{ l.tx_hash|slice:":8" }}…</code>
+                            {% else %}
+                                <i class="fas fa-times text-muted"></i>
+                            {% endif %}
+                        </td>
+                        <td class="text-truncate" style="max-width:300px;">{{ l.text|default:"-"|truncatechars:80 }}</td>
+                        <td class="text-danger small">{{ l.error_message|default:"-"|truncatechars:60 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center p-4 text-muted">
+            <i class="fas fa-inbox fa-2x mb-2"></i>
+            <p class="mb-0">Henüz hiç webhook gelmedi. Gruba bir mesaj gönderin veya webhook'un kurulu olduğunu kontrol edin.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Kullanım Kılavuzu (bilgilendirme) -->
 <div class="alert alert-info border-0 d-flex align-items-start gap-3 mb-4" style="background:#e0e7ff;color:#1e3a8a;border-radius:14px;">
     <i class="fas fa-info-circle fa-2x mt-1"></i>
@@ -12,7 +102,7 @@
         <p class="mb-2"><strong>Ekstra bir komut gerekmez.</strong> Bot, mesajda otomatik olarak tx hash algılar ve cevap verir.</p>
         <ol class="mb-2 small">
             <li>Botu grubunuza <strong>admin olarak</strong> ekleyin (yoksa mesajları okuyamaz)</li>
-            <li>Webhook'un kurulu olduğundan emin olun → <code>https://&lt;domain&gt;/webhook/set/</code> adresini ziyaret edin</li>
+            <li>Webhook'un kurulu olduğundan emin olun → <a href="/webhook/set/" target="_blank"><code>/webhook/set/</code></a> adresine tıklayın</li>
             <li>Bu sayfada istediğiniz gruba "Aç" deyin</li>
             <li>Gruba bir tx hash yapıştırın → bot otomatik yanıt verir</li>
         </ol>

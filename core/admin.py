@@ -8,6 +8,7 @@ from .models import (
     ScheduledTask,
     TxTracker,
     TxRateCache,
+    WebhookLog,
 )
 
 
@@ -131,3 +132,33 @@ class TxRateCacheAdmin(admin.ModelAdmin):
     list_filter = ['source', 'asset']
     search_fields = ['asset', 'source', 'pair']
     ordering = ['-fetched_at']
+
+
+@admin.register(WebhookLog)
+class WebhookLogAdmin(admin.ModelAdmin):
+    list_display = [
+        'received_at', 'chat_id', 'chat_title', 'action',
+        'has_tx_hash', 'tx_hash_short', 'error_short',
+    ]
+    list_filter = ['action', 'chat_type', 'has_tx_hash', 'received_at']
+    search_fields = ['chat_id', 'chat_title', 'username', 'text', 'tx_hash', 'error_message']
+    readonly_fields = [
+        'chat_id', 'chat_type', 'chat_title', 'user_id', 'username',
+        'message_id', 'text', 'has_tx_hash', 'tx_hash', 'action',
+        'error_message', 'received_at',
+    ]
+    ordering = ['-received_at']
+    date_hierarchy = 'received_at'
+    list_per_page = 50
+
+    def tx_hash_short(self, obj):
+        if not obj.tx_hash:
+            return '-'
+        return f"{obj.tx_hash[:10]}…{obj.tx_hash[-6:]}"
+    tx_hash_short.short_description = 'Tx'
+
+    def error_short(self, obj):
+        if not obj.error_message:
+            return '-'
+        return obj.error_message[:60]
+    error_short.short_description = 'Hata'

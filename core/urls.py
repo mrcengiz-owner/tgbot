@@ -1,12 +1,13 @@
 from django.urls import path
 from . import views
-from webhook_bot import webhook, set_webhook, delete_webhook
+from webhook_bot import webhook, set_webhook, delete_webhook, webhook_info
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('webhook/', webhook, name='webhook'),
     path('webhook/set/', set_webhook, name='set_webhook'),
     path('webhook/delete/', delete_webhook, name='delete_webhook'),
+    path('webhook/info/', webhook_info, name='webhook_info'),
     path('gruplar/', views.group_list, name='groups'),
     path('gruplar/ekle/', views.group_add, name='group_add'),
     path('gruplar/sil/<int:pk>/', views.group_delete, name='group_delete'),
