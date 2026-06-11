@@ -313,6 +313,8 @@ class ExplorerService:
             return trc20  # en azından TRC20 sonucunu (varsa) döndür
 
     def _fetch_trc20(self, tx_hash: str, headers: Dict) -> Optional[TxDetails]:
+        """TronGrid events endpoint. Hem eski (token_info/value direkt)
+        hem yeni (result.value, result.from, result.to) formatı destekler."""
         try:
             r = requests.get(
                 f'https://api.trongrid.io/v1/transactions/{tx_hash}/events',
@@ -321,28 +323,117 @@ class ExplorerService:
             )
             if r.status_code != 200:
                 return None
-            data = (r.json() or {}).get('data') or []
-            if not data:
+            events = (r.json() or {}).get('data') or []
+            if not events:
                 return None
-            ev = data[0]
-            token_info = ev.get('token_info', {}) or {}
-            symbol = (token_info.get('symbol') or 'USDT').upper()
-            decimals = int(token_info.get('decimals') or 6)
-            raw_amount = int(ev.get('value') or 0)
+
+            # Sadece gerçek Transfer eventlerini değerlendir; non-Transfer (örn. Approve)
+            # event'lerini atla.
+            transfer_events = [
+                e for e in events
+                if (e.get('event_name') or '').lower() == 'transfer'
+            ]
+            if not transfer_events:
+                return None
+            ev = transfer_events[0]
+
+            # Yeni TronGrid formatı: tüm bilgiler result{} içinde; eski formatta direkt alanlardaydı
+            result = ev.get('result') or {}
+            contract_address = ev.get('contract_address') or ''
+
+            # value: önce result.value (yeni), sonra direkt alan (eski)
+            raw_value = result.get('value') if result else ev.get('value')
+            from_addr = (result.get('from') if result else ev.get('from')) or ''
+            to_addr = (result.get('to') if result else ev.get('to')) or ''
+
+            if raw_value is None or raw_value == '':
+                return None
+
+            # token_info yeni API'de yok; decimals'ı sembol/contract'tan çıkar
+            symbol, decimals = self._resolve_trc20_meta(ev, contract_address)
+
+            raw_amount = int(raw_value)
             amount = Decimal(raw_amount) / Decimal(10 ** decimals)
+
+            # Hex adresleri (0x...) base58'e çevir (T ile başlayan)
+            from_b58 = self._hex_to_tron_base58(from_addr) if from_addr else ''
+            to_b58 = self._hex_to_tron_base58(to_addr) if to_addr else ''
+
             return TxDetails(
                 chain='tron',
                 asset_symbol=symbol,
                 amount=amount,
-                from_address=ev.get('from'),
-                to_address=ev.get('to'),
-                confirmed=bool(ev.get('confirmed')),
+                from_address=from_b58 or from_addr,
+                to_address=to_b58 or to_addr,
+                confirmed=True,
                 explorer_url=f"{EXPLORER_URLS['tron']}/{tx_hash}",
                 raw=ev,
             )
         except (requests.RequestException, ValueError, KeyError) as exc:
             logger.warning('TronGrid TRC20 error: %s', exc)
             return None
+
+    def _resolve_trc20_meta(self, ev: Dict, contract_address: str) -> tuple:
+        """TRC20 sembol ve decimals'ı belirle. Bilinen yaygın tokenlar için
+        hardcoded tablo kullan, geri kalanı için token_info (eski API) veya
+        event adından fallback."""
+        # Eski format desteği: token_info direkt event üzerinde
+        token_info = ev.get('token_info') or {}
+        if token_info:
+            sym = (token_info.get('symbol') or '').upper()
+            dec = int(token_info.get('decimals') or 6)
+            if sym:
+                return sym, dec
+
+        # Bilinen yaygın TRC20 tokenlar (sembol -> decimals)
+        known = {
+            'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t': ('USDT', 6),  # Tether USD
+            'TEkxiTehnzSmSe2XqrBj4p32aNm7JjyT8t': ('USDC', 6),
+            'TSSMHYeV2uW9oKwHHr5xgo3K9VgrYU2w4w': ('BTT', 18),
+            'TKfjV9ApKJUp4Y1dD2Z7Y8m2xQK5M2B8B3': ('WIN', 6),
+            'TNUC9Qb1rRpS5CbWLmNMxKSkJ9Rw7Y3aDf': ('NFT', 6),
+            'TLBaQaG5RseMrFZCf7B1qz1Hb1xY4qB6qk': ('JST', 18),
+            'TCFLL5dx5ZJdKnW9Yzqe2rCnqwfu1t9Gpt': ('SUN', 18),
+        }
+        if contract_address in known:
+            return known[contract_address]
+
+        # Bilinmeyen token: event_name ve contract'tan default
+        return 'TRC20', 6
+
+    def _hex_to_tron_base58(self, hex_addr: str) -> str:
+        """0x prefix'li (veya prefix'siz) 40-hex (20 byte) tron adresini
+        base58'e çevir. Eğer zaten T ile başlıyorsa olduğu gibi döndür."""
+        if not hex_addr:
+            return ''
+        if hex_addr.startswith('T') and len(hex_addr) == 34:
+            return hex_addr
+        try:
+            import hashlib
+            h = hex_addr[2:] if hex_addr.startswith('0x') else hex_addr
+            # Tron events result'ı 0x + 40 hex (20 byte) döner
+            if len(h) != 40:
+                return ''
+            # Tron address = 0x41 prefix + 20 byte address + 4 byte checksum
+            raw = b'\x41' + bytes.fromhex(h)
+            checksum = hashlib.sha256(hashlib.sha256(raw).digest()).digest()[:4]
+            payload = raw + checksum
+            alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+            n = int.from_bytes(payload, 'big')
+            res = ''
+            while n > 0:
+                n, rem = divmod(n, 58)
+                res = alphabet[rem] + res
+            pad = 0
+            for byte in payload:
+                if byte == 0:
+                    pad += 1
+                else:
+                    break
+            return 'T' + ('1' * pad) + res
+        except Exception as exc:  # noqa: BLE001
+            logger.debug('tron hex->base58 failed: %s', exc)
+            return ''
 
     @staticmethod
     def _tron_hex_to_base58(hex_addr: str) -> Optional[str]:

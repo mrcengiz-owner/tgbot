@@ -275,6 +275,8 @@ class TxService:
         return asset_up
 
     def _format_resolved(self, record, elapsed: float = 0.0) -> str:
+        """Modern, mobile-friendly HTML formatı.
+        Yapı: başlık → ana bilgi kartı → kur kartı → adres kartı → tx kartı → footer."""
         chain_label = dict(record._meta.get_field('detected_chain').choices).get(
             record.detected_chain, record.detected_chain.upper()
         )
@@ -286,7 +288,6 @@ class TxService:
         value = record.try_value if record.try_value is not None else Decimal('0')
         value_str = self._format_money(value)
 
-        # Raw payload'dan rate kaynaklarını çek
         rates_payload = {}
         if isinstance(record.raw_payload, dict):
             rates_payload = record.raw_payload.get('_rates', {}) or {}
@@ -300,57 +301,82 @@ class TxService:
 
         asset_display = standard if (standard and standard != '?') else asset
 
-        lines = [
-            '🪙 <b>Kripto İşlem Detayı</b>',
-            '',
-            f'💎 <b>Varlık:</b> <code>{asset_display}</code>',
-            f'🔢 <b>Miktar:</b> <code>{amount_str}</code> {asset}',
-            f'🇹🇷 <b>TL Karşılığı:</b> <code>{value_str}</code> ₺',
-            '',
-        ]
+        # Kaynak ikonları
+        source_icons = {
+            'btcturk': '🇹🇷', 'paribu': '🇹🇷', 'bitturk': '🇹🇷', 'cointr': '🇹🇷',
+            'binance': '🌐', 'coingecko': '🌐',
+        }
+        source_names = {
+            'btcturk': 'BTCTurk', 'paribu': 'Paribu', 'bitturk': 'Bitturk',
+            'cointr': 'Cointr', 'binance': 'Binance', 'coingecko': 'CoinGecko',
+        }
 
-        # Kur detayları bloğu
+        parts = []
+        # Başlık
+        parts.append('┏━━━━━━━━━━━━━━━━━━━━━━━━━┓')
+        parts.append(f'┃  🪙 <b>{self._escape(standard)} Detayı</b>')
+        parts.append('┗━━━━━━━━━━━━━━━━━━━━━━━━━┛')
+        parts.append('')
+
+        # Ana bilgi: varlık + miktar + TL
+        parts.append(f'💎 <b>Varlık</b>      <code>{self._escape(asset)}</code>')
+        parts.append(f'🔢 <b>Miktar</b>      <code>{self._escape(amount_str)}</code> <i>{self._escape(asset)}</i>')
+        parts.append(f'🇹🇷 <b>TL Karşılığı</b>  <code>{self._escape(value_str)} ₺</code>')
+        parts.append('')
+
+        # Kur kartı
         sources = rates_payload.get('sources', []) if rates_payload else []
         if sources:
-            lines.append(f'💱 <b>Anlık Kurlar ({len(sources)} kaynak):</b>')
-            # Satır başına her kaynak
-            source_icons = {
-                'btcturk': '🇹🇷', 'paribu': '🇹🇷', 'bitturk': '🇹🇷', 'cointr': '🇹🇷',
-                'binance': '🌐', 'coingecko': '🌐',
-            }
+            parts.append('┌── 💱 <b>Anlık Kur</b> ──┐')
             for s in sources:
                 icon = source_icons.get(s.get('source', ''), '•')
-                name = s.get('source', '?').upper()
+                name = source_names.get(s.get('source', ''), s.get('source', '?').upper())
                 rate_val = s.get('rate', '?')
-                cached = ' 📦' if s.get('cached') else ''
-                lines.append(f'   {icon} <code>{rate_val} ₺</code> · {name}{cached}')
+                cached = ' <i>📦</i>' if s.get('cached') else ''
+                parts.append(f'│ {icon} <code>{self._escape(str(rate_val))} ₺</code>  <b>{name}</b>{cached}')
             avg = rates_payload.get('average')
             med = rates_payload.get('median')
             mn = rates_payload.get('min')
             mx = rates_payload.get('max')
             if avg and med:
-                lines.append(f'   📊 Ort: <code>{avg}</code> · Med: <code>{med}</code> · Min: <code>{mn}</code> · Max: <code>{mx}</code> ₺')
-            lines.append(f'   ⮕ <b>Ortalamayla hesaplanan:</b> <code>{rate_str}</code> ₺')
+                avg_s = self._escape(str(avg))
+                med_s = self._escape(str(med))
+                mn_s = self._escape(str(mn))
+                mx_s = self._escape(str(mx))
+                parts.append(f'│ ────────────────────')
+                parts.append(f'│ <b>Ort</b> <code>{avg_s}</code>  <b>Med</b> <code>{med_s}</code>')
+                parts.append(f'│ <b>Min</b> <code>{mn_s}</code>  <b>Max</b> <code>{mx_s}</code> ₺')
+            parts.append(f'│ <i>⮕ Hesaplanan:</i> <code>{self._escape(rate_str)} ₺</code>')
+            parts.append('└─────────────────────┘')
         else:
-            # Eski tek kaynak davranışı (geriye uyumluluk)
             rate_source = (record.rate_source or 'bilinmiyor').upper()
-            lines.append(f'💱 <b>Anlık Kur ({rate_source}):</b> <code>{rate_str}</code> ₺')
+            parts.append(f'┌── 💱 <b>Anlık Kur</b> ──┐')
+            parts.append(f'│ <b>{self._escape(rate_source)}</b>  <code>{self._escape(rate_str)} ₺</code>')
+            parts.append('└─────────────────────┘')
+        parts.append('')
 
-        lines.append('')
-        lines.append(f'🌐 <b>Ağ:</b> {chain_label}')
+        # Ağ & adresler
+        parts.append(f'🌐 <b>Ağ</b>         <code>{self._escape(chain_label)}</code>')
         if record.from_address:
-            lines.append(f'📤 <b>Gönderen:</b> <code>{self._short_addr(record.from_address)}</code>')
+            short_from = self._short_addr(record.from_address)
+            parts.append(f'📤 <b>Gönderen</b>    <code>{self._escape(short_from)}</code>')
         if record.to_address:
-            lines.append(f'📥 <b>Alan:</b> <code>{self._short_addr(record.to_address)}</code>')
-        lines.append('')
-        lines.append(f'🆔 <b>Tx:</b>')
-        lines.append(f'<code>{record.tx_hash}</code>')
+            short_to = self._short_addr(record.to_address)
+            parts.append(f'📥 <b>Alan</b>       <code>{self._escape(short_to)}</code>')
+        parts.append('')
+
+        # Tx kartı
+        short_hash = self._short_hash(record.tx_hash)
         if record.explorer_url:
-            lines.append(f'<a href="{record.explorer_url}">🔎 Explorer\'da Gör</a>')
-        lines.append('')
-        elapsed_str = f' · ⏱ {elapsed:.1f}s' if elapsed else ''
-        lines.append(f'<i>🤖 Otomatik algılandı{elapsed_str}</i>')
-        return '\n'.join(lines)
+            parts.append(f'🔗 <a href="{record.explorer_url}"><b>Tronscan\'da Gör</b></a>  <code>{self._escape(short_hash)}</code>')
+        else:
+            parts.append(f'🆔 <b>Tx</b>  <code>{self._escape(short_hash)}</code>')
+        parts.append('')
+
+        # Footer
+        elapsed_str = f'  ⏱ {elapsed:.1f}s' if elapsed else ''
+        parts.append(f'<i>🤖 Otomatik algılandı{self._escape(elapsed_str)}</i>')
+        return '\n'.join(parts)
 
     def _format_error(self, record) -> str:
         return (
@@ -387,6 +413,28 @@ class TxService:
         if len(addr) <= head + tail + 3:
             return addr
         return f"{addr[:head]}…{addr[-tail:]}"
+
+    @staticmethod
+    def _short_hash(h: str, head: int = 8, tail: int = 6) -> str:
+        """Tx hash'i kısa göster: 'b9862d70...1e8d7'."""
+        if not h:
+            return ''
+        if len(h) <= head + tail + 3:
+            return h
+        return f"{h[:head]}…{h[-tail:]}"
+
+    @staticmethod
+    def _escape(text: str) -> str:
+        """Telegram HTML parse_mode için güvenli kaçış.
+        <, >, & karakterleri Telegram tarafından mesaj kırıcı olarak yorumlanır."""
+        if not text:
+            return ''
+        return (
+            str(text)
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+        )
 
     # ----------------- Telegram send -----------------
     def _send_to_telegram(self, chat_id: str, text: str, reply_to_message_id: Optional[int] = None) -> bool:
