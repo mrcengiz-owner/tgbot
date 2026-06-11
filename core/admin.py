@@ -1,22 +1,30 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import TelegramGroup, MessageTemplate, MessageLog, Settings, ScheduledTask
+from .models import (
+    TelegramGroup,
+    MessageTemplate,
+    MessageLog,
+    Settings,
+    ScheduledTask,
+    TxTracker,
+    TxRateCache,
+)
 
 
 @admin.register(TelegramGroup)
 class TelegramGroupAdmin(admin.ModelAdmin):
-    list_display = ['name', 'chat_id', 'is_active', 'created_at']
-    list_filter = ['is_active', 'created_at']
+    list_display = ['name', 'chat_id', 'is_active', 'tx_tracker_enabled', 'created_at']
+    list_filter = ['is_active', 'tx_tracker_enabled', 'created_at']
     search_fields = ['name', 'chat_id']
     ordering = ['-created_at']
-    list_editable = ['is_active']
-    
+    list_editable = ['is_active', 'tx_tracker_enabled']
+
     fieldsets = (
         ('Grup Bilgileri', {
             'fields': ('name', 'chat_id', 'description')
         }),
-        ('Durum', {
-            'fields': ('is_active',)
+        ('Özellikler', {
+            'fields': ('is_active', 'tx_tracker_enabled')
         }),
     )
 
@@ -92,3 +100,34 @@ class ScheduledTaskAdmin(admin.ModelAdmin):
     def interval_display(self, obj):
         return f"{obj.interval_minutes} dk"
     interval_display.short_description = 'Aralık'
+
+
+@admin.register(TxTracker)
+class TxTrackerAdmin(admin.ModelAdmin):
+    list_display = [
+        'tx_hash_short', 'detected_chain', 'asset_symbol', 'amount',
+        'try_rate', 'try_value', 'status', 'group', 'created_at',
+    ]
+    list_filter = ['status', 'detected_chain', 'asset_symbol', 'created_at']
+    search_fields = ['tx_hash', 'from_address', 'to_address', 'group__name']
+    readonly_fields = [
+        'tx_hash', 'detected_chain', 'asset_symbol', 'amount',
+        'from_address', 'to_address', 'try_rate', 'try_value',
+        'rate_source', 'explorer_url', 'group', 'message_id',
+        'status', 'raw_payload', 'error_message',
+        'created_at', 'resolved_at',
+    ]
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+
+    def tx_hash_short(self, obj):
+        return f"{obj.tx_hash[:10]}…{obj.tx_hash[-6:]}"
+    tx_hash_short.short_description = 'Tx Hash'
+
+
+@admin.register(TxRateCache)
+class TxRateCacheAdmin(admin.ModelAdmin):
+    list_display = ['asset', 'source', 'pair', 'rate', 'fetched_at']
+    list_filter = ['source', 'asset']
+    search_fields = ['asset', 'source', 'pair']
+    ordering = ['-fetched_at']

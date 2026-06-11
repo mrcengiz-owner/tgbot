@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
@@ -5,7 +6,15 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 import requests
-from .models import TelegramGroup, MessageTemplate, MessageLog, ScheduledTask
+from .models import (
+    TelegramGroup,
+    MessageTemplate,
+    MessageLog,
+    ScheduledTask,
+    TxTracker,
+    TxRateCache,
+)
+from .services import RateService, ExplorerService, TxService
 
 
 @login_required
@@ -36,15 +45,17 @@ def group_add(request):
     name = request.POST.get('name')
     chat_id = request.POST.get('chat_id')
     description = request.POST.get('description', '')
-    
+    tx_tracker_enabled = request.POST.get('tx_tracker_enabled') == 'on'
+
     if TelegramGroup.objects.filter(chat_id=chat_id).exists():
         messages.error(request, 'Bu Chat ID zaten kayıtlı!')
         return redirect('groups')
-    
+
     TelegramGroup.objects.create(
         name=name,
         chat_id=chat_id,
-        description=description
+        description=description,
+        tx_tracker_enabled=tx_tracker_enabled,
     )
     messages.success(request, 'Grup başarıyla eklendi!')
     return redirect('groups')
@@ -67,6 +78,17 @@ def group_toggle(request, pk):
     group.save()
     status = "aktif" if group.is_active else "pasif"
     messages.success(request, f'Grup {status} hale getirildi!')
+    return redirect('groups')
+
+
+@require_http_methods(["POST"])
+def group_toggle_tracker(request, pk):
+    """Grup için Kripto TX takibini aç/kapat"""
+    group = get_object_or_404(TelegramGroup, pk=pk)
+    group.tx_tracker_enabled = not group.tx_tracker_enabled
+    group.save()
+    state = "aktifleştirildi" if group.tx_tracker_enabled else "devre dışı bırakıldı"
+    messages.success(request, f'Kripto TX takibi {group.name} için {state}.')
     return redirect('groups')
 
 
@@ -303,9 +325,146 @@ def scheduled_task_edit(request, pk):
         task.template = get_object_or_404(MessageTemplate, pk=template_id)
     task.interval_minutes = int(interval_minutes)
     task.save()
-    
+
     if selected_groups:
         task.groups.set(selected_groups)
-    
+
     messages.success(request, 'Görev güncellendi!')
     return redirect('scheduled_tasks')
+
+
+# =====================================================================
+# Kripto TX Takip Modülü
+# =====================================================================
+
+@login_required
+def tx_tracker_dashboard(request):
+    """Kripto takip ana sayfası: istatistikler, son tx'ler, aktif gruplar."""
+    tx_qs = TxTracker.objects.all()
+    stats = {
+        'total': tx_qs.count(),
+        'resolved': tx_qs.filter(status='resolved').count(),
+        'pending': tx_qs.filter(status='pending').count(),
+        'failed': tx_qs.filter(status='failed').count(),
+        'ignored': tx_qs.filter(status='ignored').count(),
+        'total_try_value': sum(
+            (t.try_value for t in tx_qs.filter(status='resolved') if t.try_value),
+            start=Decimal('0'),
+        ),
+    }
+    enabled_groups = TelegramGroup.objects.filter(is_active=True, tx_tracker_enabled=True)
+    return render(
+        request,
+        'core/tx_tracker.html',
+        {
+            'stats': stats,
+            'recent_tx': tx_qs[:30],
+            'enabled_groups': enabled_groups,
+            'all_groups': TelegramGroup.objects.all().order_by('name'),
+            'rate_cache': TxRateCache.objects.all()[:20],
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def tx_lookup(request):
+    """Manuel tx arama - admin panelinden hash girip sonucu gör."""
+    tx_hash = (request.POST.get('tx_hash') or '').strip()
+    asset_hint = (request.POST.get('asset_hint') or '').strip().upper() or None
+
+    if not tx_hash:
+        messages.error(request, 'Tx hash boş olamaz.')
+        return redirect('tx_tracker')
+
+    explorer = ExplorerService()
+    rate_service = RateService()
+    details = explorer.fetch(tx_hash)
+    result = {'tx_hash': tx_hash, 'ok': False, 'details': None, 'error': None, 'rate': None, 'value': None}
+
+    if details is None:
+        result['error'] = 'Zincir/format desteklenmiyor veya explorer verisi alınamadı.'
+    else:
+        symbol = (asset_hint or details.asset_symbol or 'USDT').upper()
+        try:
+            amount = Decimal(str(details.amount)) if details.amount is not None else Decimal('0')
+        except Exception:  # noqa: BLE001
+            amount = Decimal('0')
+        rate_info = rate_service.get_try_rate(symbol)
+        rate = rate_info.get('rate') if rate_info else None
+        value = (amount * rate).quantize(Decimal('0.01')) if rate and amount else None
+        result.update({
+            'ok': True,
+            'details': details,
+            'rate': rate,
+            'value': value,
+            'symbol': symbol,
+            'source': (rate_info or {}).get('source'),
+        })
+
+    return render(
+        request,
+        'core/tx_tracker.html',
+        {
+            'stats': _tx_stats(),
+            'recent_tx': TxTracker.objects.all()[:30],
+            'enabled_groups': TelegramGroup.objects.filter(is_active=True, tx_tracker_enabled=True),
+            'all_groups': TelegramGroup.objects.all().order_by('name'),
+            'rate_cache': TxRateCache.objects.all()[:20],
+            'lookup_result': result,
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def tx_enable_group(request, pk):
+    """Tek bir grup için tx takibini aç."""
+    group = get_object_or_404(TelegramGroup, pk=pk)
+    group.tx_tracker_enabled = True
+    group.is_active = True
+    group.save()
+    messages.success(request, f'{group.name} için kripto takibi aktifleştirildi.')
+    return redirect('tx_tracker')
+
+
+@login_required
+@require_http_methods(["POST"])
+def tx_disable_group(request, pk):
+    """Tek bir grup için tx takibini kapat."""
+    group = get_object_or_404(TelegramGroup, pk=pk)
+    group.tx_tracker_enabled = False
+    group.save()
+    messages.success(request, f'{group.name} için kripto takibi devre dışı bırakıldı.')
+    return redirect('tx_tracker')
+
+
+@login_required
+def tx_rates_api(request):
+    """Anlık kur cache'ini JSON olarak döner (UI otomatik yenileme için)."""
+    rows = [
+        {
+            'asset': r.asset,
+            'source': r.source,
+            'pair': r.pair,
+            'rate': str(r.rate),
+            'fetched_at': r.fetched_at.strftime('%d.%m.%Y %H:%M:%S'),
+        }
+        for r in TxRateCache.objects.all()[:20]
+    ]
+    return JsonResponse({'rates': rows})
+
+
+def _tx_stats():
+    tx_qs = TxTracker.objects.all()
+    return {
+        'total': tx_qs.count(),
+        'resolved': tx_qs.filter(status='resolved').count(),
+        'pending': tx_qs.filter(status='pending').count(),
+        'failed': tx_qs.filter(status='failed').count(),
+        'ignored': tx_qs.filter(status='ignored').count(),
+        'total_try_value': sum(
+            (t.try_value for t in tx_qs.filter(status='resolved') if t.try_value),
+            start=Decimal('0'),
+        ),
+    }

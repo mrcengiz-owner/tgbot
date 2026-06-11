@@ -1,0 +1,316 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Kripto Takip - Telegram Panel{% endblock %}
+{% block page_title %}Kripto TX Takip{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-wrap" style="background:#fff3cd;color:#f59e0b;">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ stats.total }}</div>
+                    <div class="stat-label">Toplam Tx</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-wrap" style="background:#d1fae5;color:#10b981;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ stats.resolved }}</div>
+                    <div class="stat-label">Çözümlendi</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-wrap" style="background:#fee2e2;color:#ef4444;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ stats.failed }}</div>
+                    <div class="stat-label">Başarısız</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon-wrap" style="background:#dbeafe;color:#1d4ed8;">
+                    <i class="fas fa-lira-sign"></i>
+                </div>
+                <div>
+                    <div class="stat-value" style="font-size:24px;">
+                        {{ stats.total_try_value|floatformat:2 }} ₺
+                    </div>
+                    <div class="stat-label">Toplam TL Hacim</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manuel arama + Aktif gruplar -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fas fa-search me-2"></i>Manuel Tx Sorgu
+            </div>
+            <div class="card-body">
+                <form action="{% url 'tx_lookup' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Tx Hash</label>
+                        <input type="text" name="tx_hash" class="form-control" placeholder="örn: fa76f4164b018e7f377f9612687d09ae21f7a7e34f9bb951bfae3d0255b2a503" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Varlık İpucu (opsiyonel)</label>
+                        <select name="asset_hint" class="form-select">
+                            <option value="">Otomatik tespit</option>
+                            <option value="USDT">USDT</option>
+                            <option value="BTC">BTC</option>
+                            <option value="ETH">ETH</option>
+                            <option value="BNB">BNB</option>
+                            <option value="TRX">TRX</option>
+                            <option value="SOL">SOL</option>
+                            <option value="LTC">LTC</option>
+                            <option value="DOGE">DOGE</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-bolt me-2"></i>Sorgula
+                    </button>
+                </form>
+
+                {% if lookup_result %}
+                    <hr class="my-4">
+                    {% if lookup_result.ok %}
+                        <div class="alert alert-success mb-3">
+                            <strong>{{ lookup_result.symbol }}</strong> · {{ lookup_result.details.chain|upper }} ·
+                            Miktar: <code>{{ lookup_result.details.amount }}</code>
+                        </div>
+                        <ul class="list-unstyled small mb-0">
+                            <li>💱 Kur: <code>{{ lookup_result.rate }}</code> ₺ ({{ lookup_result.source }})</li>
+                            <li>🇹🇷 TL: <code>{{ lookup_result.value }}</code> ₺</li>
+                            <li>📤 Gönderen: <code>{{ lookup_result.details.from_address|default:"-" }}</code></li>
+                            <li>📥 Alan: <code>{{ lookup_result.details.to_address|default:"-" }}</code></li>
+                            {% if lookup_result.details.explorer_url %}
+                                <li><a href="{{ lookup_result.details.explorer_url }}" target="_blank">🔎 Explorer</a></li>
+                            {% endif %}
+                        </ul>
+                    {% else %}
+                        <div class="alert alert-danger mb-0">
+                            {{ lookup_result.error }}
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-users-cog me-2"></i>TX Takibi Açık Gruplar</span>
+                <span class="badge bg-warning text-dark">{{ enabled_groups.count }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if enabled_groups %}
+                    <ul class="list-group list-group-flush">
+                        {% for g in enabled_groups %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ g.name }}</strong>
+                                <br>
+                                <code class="small text-muted">{{ g.chat_id }}</code>
+                            </div>
+                            <form action="{% url 'tx_disable_group' g.id %}" method="POST">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-bell-slash"></i> Kapat
+                                </button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center p-4 text-muted">
+                        <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                        <p class="mb-0">Henüz hiçbir grupta kripto takibi aktif değil.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tüm gruplar (hızlı açma/kapama) -->
+{% if all_groups %}
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-sliders-h me-2"></i>Tüm Gruplar İçin Hızlı Kontrol
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Grup</th>
+                        <th>Chat ID</th>
+                        <th class="text-center">Aktif mi?</th>
+                        <th class="text-center">TX Takip</th>
+                        <th class="text-end">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in all_groups %}
+                    <tr>
+                        <td><strong>{{ g.name }}</strong></td>
+                        <td><code class="small">{{ g.chat_id }}</code></td>
+                        <td class="text-center">
+                            {% if g.is_active %}
+                                <span class="badge bg-success">Evet</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Hayır</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if g.tx_tracker_enabled %}
+                                <span class="badge bg-warning text-dark">Açık</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">Kapalı</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if g.tx_tracker_enabled %}
+                                <form action="{% url 'tx_disable_group' g.id %}" method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-warning">Kapat</button>
+                                </form>
+                            {% else %}
+                                <form action="{% url 'tx_enable_group' g.id %}" method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-success">Aç</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Anlık Kur Cache -->
+{% if rate_cache %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-sync me-2"></i>Anlık Kur Önbelleği (BTCTurk & Paribu)</span>
+        <small class="text-muted">30 sn cache</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Varlık</th>
+                        <th>Kaynak</th>
+                        <th>Parite</th>
+                        <th class="text-end">Kur (₺)</th>
+                        <th class="text-end">Güncellendi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rate_cache %}
+                    <tr>
+                        <td><strong>{{ r.asset }}</strong></td>
+                        <td><span class="badge bg-info">{{ r.source|upper }}</span></td>
+                        <td><code>{{ r.pair }}</code></td>
+                        <td class="text-end fw-semibold">{{ r.rate }}</td>
+                        <td class="text-end text-muted small">{{ r.fetched_at|date:"d.m.Y H:i:s" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Son tx kayıtları -->
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-history me-2"></i>Son Tx Kayıtları
+    </div>
+    <div class="card-body p-0">
+        {% if recent_tx %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Tx</th>
+                        <th>Grup</th>
+                        <th>Zincir</th>
+                        <th>Varlık</th>
+                        <th class="text-end">Miktar</th>
+                        <th class="text-end">Kur (₺)</th>
+                        <th class="text-end">TL</th>
+                        <th>Durum</th>
+                        <th>Tarih</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in recent_tx %}
+                    <tr>
+                        <td>
+                            <code class="small">{{ t.tx_hash|slice:":10" }}…{{ t.tx_hash|slice:"-6:" }}</code>
+                            {% if t.explorer_url %}
+                                <a href="{{ t.explorer_url }}" target="_blank" class="ms-1"><i class="fas fa-external-link-alt small"></i></a>
+                            {% endif %}
+                        </td>
+                        <td>{{ t.group.name|default:"-" }}</td>
+                        <td><span class="badge bg-light text-dark">{{ t.detected_chain|upper }}</span></td>
+                        <td><strong>{{ t.asset_symbol|default:"?" }}</strong></td>
+                        <td class="text-end">{{ t.amount|default:0 }}</td>
+                        <td class="text-end">{{ t.try_rate|default:"-" }}</td>
+                        <td class="text-end fw-semibold text-success">{{ t.try_value|default:"-" }} ₺</td>
+                        <td>
+                            {% if t.status == 'resolved' %}
+                                <span class="badge bg-success">Çözüldü</span>
+                            {% elif t.status == 'failed' %}
+                                <span class="badge bg-danger">Hata</span>
+                            {% elif t.status == 'ignored' %}
+                                <span class="badge bg-secondary">Yok sayıldı</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Beklemede</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ t.created_at|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center p-5 text-muted">
+            <i class="fas fa-inbox fa-3x mb-3"></i>
+            <p class="mb-0">Henüz tx kaydı yok. Aktif bir gruba bir tx hash gönderdiğinizde burada görünecek.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

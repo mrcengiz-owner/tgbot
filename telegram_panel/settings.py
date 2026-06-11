@@ -90,6 +90,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8058870569:AAFfuGffgNC15hED-nlUIfqQYSewf8RND4M')
 
+# Kripto TX Takip için opsiyonel API anahtarları
+# Etherscan v2: https://etherscan.io/apis (ücretsiz 5 req/s, 100k çağrı/gün)
+ETHERSCAN_API_KEY = os.environ.get('ETHERSCAN_API_KEY', '')
+# TronGrid: https://www.trongrid.io/ (ücretsiz 100k istek/gün, 15 QPS)
+TRONGRID_API_KEY = os.environ.get('TRONGRID_API_KEY', '')
+
 # Security settings for production (Coolify reverse proxy kullanıyor, SSL redirect kapalı)
 if not DEBUG:
     SECURE_SSL_REDIRECT = False
