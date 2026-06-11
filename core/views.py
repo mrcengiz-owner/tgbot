@@ -367,7 +367,10 @@ def tx_tracker_dashboard(request):
             'webhook_logs': WebhookLog.objects.all()[:25],
             'webhook_stats': {
                 'total': WebhookLog.objects.count(),
+                'sent': WebhookLog.objects.filter(action='sent').count(),
+                'send_failed': WebhookLog.objects.filter(action='send_failed').count(),
                 'processed': WebhookLog.objects.filter(action='processed').count(),
+                'no_reply': WebhookLog.objects.filter(action='no_reply').count(),
                 'no_tx': WebhookLog.objects.filter(action='no_tx').count(),
                 'no_group': WebhookLog.objects.filter(action='no_group').count(),
                 'ignored': WebhookLog.objects.filter(action='ignored').count(),
@@ -428,7 +431,10 @@ def tx_lookup(request):
             'webhook_logs': WebhookLog.objects.all()[:25],
             'webhook_stats': {
                 'total': WebhookLog.objects.count(),
+                'sent': WebhookLog.objects.filter(action='sent').count(),
+                'send_failed': WebhookLog.objects.filter(action='send_failed').count(),
                 'processed': WebhookLog.objects.filter(action='processed').count(),
+                'no_reply': WebhookLog.objects.filter(action='no_reply').count(),
                 'no_tx': WebhookLog.objects.filter(action='no_tx').count(),
                 'no_group': WebhookLog.objects.filter(action='no_group').count(),
                 'ignored': WebhookLog.objects.filter(action='ignored').count(),

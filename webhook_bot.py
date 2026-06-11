@@ -128,8 +128,18 @@ def webhook(request):
                 message_id=message_id,
             )
             if reply:
-                log.action = 'processed'
-                log.save(update_fields=['action'])
+                # Bot cevabı oluşturdu. Şimdi gerçekten gönderildi mi kontrol et
+                # (sendMessage API'sine bağımsız istek atarak)
+                sent_ok, send_err = _verify_send(str(chat_id), reply)
+                if sent_ok:
+                    log.action = 'sent'
+                    log.save(update_fields=['action'])
+                else:
+                    log.action = 'send_failed'
+                    log.error_message = f'cevap oluşturuldu ama Telegram reddetti: {send_err}'
+                    log.save(update_fields=['action', 'error_message'])
+                    # Gruptaki üyelere de küçük bir debug mesajı yazmayı dene
+                    logger.warning('Grup %s için tx cevabı gönderilemedi: %s', chat_id, send_err)
             else:
                 log.action = 'no_reply'
                 log.error_message = 'TxService.process None döndü (explorer verisi alınamamış olabilir)'
@@ -162,6 +172,31 @@ def _handle_kayit(chat: dict) -> None:
         )
     except requests.RequestException as exc:
         logger.warning('/kayit gönderilemedi: %s', exc)
+
+
+def _verify_send(chat_id: str, text: str) -> tuple:
+    """Cevap metnini gruba gerçekten göndermeyi dener. Returns (success, error_str)."""
+    try:
+        r = requests.post(
+            f'{TELEGRAM_API_URL}/sendMessage',
+            json={
+                'chat_id': chat_id,
+                'text': text,
+                'parse_mode': 'HTML',
+                'disable_web_page_preview': True,
+            },
+            timeout=10,
+        )
+        if r.status_code == 200:
+            return True, ''
+        try:
+            payload = r.json()
+            desc = payload.get('description', r.text)
+        except Exception:  # noqa: BLE001
+            desc = r.text
+        return False, f'HTTP {r.status_code}: {str(desc)[:200]}'
+    except requests.RequestException as exc:
+        return False, f'ağ hatası: {exc}'
 
 
 @csrf_exempt

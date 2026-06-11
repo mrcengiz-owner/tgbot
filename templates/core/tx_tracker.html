@@ -26,7 +26,8 @@
     </div>
     <div class="card-body">
         <div class="row g-2 mb-3 text-center">
-            <div class="col"><span class="badge bg-success">processed: {{ webhook_stats.processed }}</span></div>
+            <div class="col"><span class="badge bg-success">sent: {{ webhook_stats.sent }}</span></div>
+            <div class="col"><span class="badge bg-warning text-dark">send_failed: {{ webhook_stats.send_failed|default:0 }}</span></div>
             <div class="col"><span class="badge bg-warning text-dark">no_tx: {{ webhook_stats.no_tx }}</span></div>
             <div class="col"><span class="badge bg-secondary">no_group: {{ webhook_stats.no_group }}</span></div>
             <div class="col"><span class="badge bg-dark">ignored: {{ webhook_stats.ignored }}</span></div>
@@ -54,8 +55,14 @@
                         <td><code class="small">{{ l.chat_id|default:"-" }}</code></td>
                         <td>{{ l.chat_title|default:"-"|truncatechars:20 }}</td>
                         <td>
-                            {% if l.action == 'processed' %}
+                            {% if l.action == 'sent' %}
+                                <span class="badge bg-success">sent ✅</span>
+                            {% elif l.action == 'send_failed' %}
+                                <span class="badge bg-warning text-dark">send_failed ❌</span>
+                            {% elif l.action == 'processed' %}
                                 <span class="badge bg-success">processed</span>
+                            {% elif l.action == 'no_reply' %}
+                                <span class="badge bg-warning text-dark">no_reply</span>
                             {% elif l.action == 'no_tx' %}
                                 <span class="badge bg-warning text-dark">no_tx</span>
                             {% elif l.action == 'no_group' %}

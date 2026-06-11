@@ -95,6 +95,7 @@ class TxService:
         message_text: str,
         chat_id: str,
         message_id: Optional[int] = None,
+        send_to_telegram: bool = True,
     ) -> Optional[str]:
         """Mesajı işle, Telegram'a gönderilecek formatlı metni döner.
         Dönüş None ise işlem yapılmadı (tx yok / grup pasif / hata)."""
@@ -182,7 +183,8 @@ class TxService:
 
         # Telegram'a gönder
         reply_text = self._format_resolved(record, elapsed=time.time() - start)
-        self._send_to_telegram(chat_id, reply_text, reply_to_message_id=message_id)
+        if send_to_telegram:
+            self._send_to_telegram(chat_id, reply_text, reply_to_message_id=message_id)
         return reply_text
 
     # ----------------- Format -----------------
@@ -267,24 +269,47 @@ class TxService:
 
     # ----------------- Telegram send -----------------
     def _send_to_telegram(self, chat_id: str, text: str, reply_to_message_id: Optional[int] = None) -> bool:
+        """
+        Telegram'a mesaj gönderir.
+        Hata durumunda False döner, detay loglanır.
+        Returns (success, error_message) — caller WebhookLog'a yazabilir.
+        """
         if not self.bot_token:
             logger.warning('TELEGRAM_BOT_TOKEN boş - mesaj gönderilmedi')
             return False
         url = f'https://api.telegram.org/bot{self.bot_token}/sendMessage'
+        # Önce reply_to olmadan dene (silinen mesaja reply hatası alabiliriz)
         payload = {
             'chat_id': chat_id,
             'text': text,
             'parse_mode': 'HTML',
             'disable_web_page_preview': True,
         }
-        if reply_to_message_id:
-            payload['reply_to_message_id'] = reply_to_message_id
         try:
             r = requests.post(url, json=payload, timeout=self.timeout)
-            if r.status_code != 200:
-                logger.warning('Telegram sendMessage %s: %s', r.status_code, r.text[:300])
-                return False
-            return True
+            if r.status_code == 200:
+                return True
+            err_text = (r.text or '')[:300]
+            logger.warning('Telegram sendMessage %s: %s', r.status_code, err_text)
+            # Bilinen ve yaygın hataları kullanıcı dostu metne çevir
+            hint = ''
+            try:
+                err_json = r.json()
+                desc = (err_json.get('description') or '').lower()
+                if 'chat not found' in desc:
+                    hint = ' — bot gruba eklenmemiş veya chat_id yanlış'
+                elif 'bot was blocked' in desc or 'bot was kicked' in desc:
+                    hint = ' — bot gruptan atılmış, yeniden ekleyin'
+                elif 'not enough rights' in desc or 'have no rights' in desc or 'forbidden' in desc:
+                    hint = ' — bot gruba ADMIN olarak eklenmeli (yöneticilerden)'
+                elif 'message is too long' in desc:
+                    hint = ' — mesaj çok uzun'
+                elif 'replied message not found' in desc:
+                    hint = ' — orijinal mesaj silinmiş'
+            except Exception:  # noqa: BLE001
+                pass
+            logger.warning('Telegram gönderim hatası: %s%s', err_text, hint)
+            return False
         except requests.RequestException as exc:
             logger.warning('Telegram sendMessage error: %s', exc)
             return False
