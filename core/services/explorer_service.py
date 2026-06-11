@@ -57,42 +57,93 @@ class ExplorerService:
 
     # ----------------- Public API -----------------
     def fetch(self, tx_hash: str, hint_chain: Optional[str] = None) -> Optional[TxDetails]:
-        """Tx hash'i tanır ve ilgili zincirden detayları çeker."""
-        chain = hint_chain or self.detect_chain(tx_hash)
-        if chain == 'unknown' or not chain:
+        """Tx hash'i tanır ve ilgili zincirden detayları çeker.
+        Akıllı strateji: ipucu varsa onu dene, yoksa sırayla TRON → EVM'ler → UTXO zincirleri."""
+        # Hash'i normalleştir (0x prefix'i, küçük harf)
+        h = self._normalize_hash(tx_hash)
+        if not h:
             return None
 
-        if chain in ('bitcoin', 'litecoin', 'dogecoin'):
-            return self._fetch_utxo(chain, tx_hash)
-        if chain in ('ethereum', 'bsc', 'polygon', 'arbitrum'):
-            return self._fetch_evm(chain, tx_hash)
-        if chain == 'tron':
-            return self._fetch_tron(tx_hash)
+        # 1) Önce ipucu/hint_chain varsa onu dene
+        if hint_chain and hint_chain != 'unknown':
+            result = self._try_chain(hint_chain, h)
+            if result:
+                return result
+
+        # 2) Format tabanlı sıralı deneme
+        # 64 hex → TRON veya EVM (sırayla dene)
+        if re.fullmatch(r'[0-9a-fA-F]{64}', h):
+            return self._fetch_evm_or_tron(h)
+
+        # base58 (60-70 karakter) → UTXO zincirleri (BTC, LTC, DOGE)
+        if re.fullmatch(r'[1-9A-HJ-NP-Za-km-z]{60,70}', h):
+            for chain in ('bitcoin', 'litecoin', 'dogecoin'):
+                result = self._fetch_utxo(chain, h)
+                if result and result.amount is not None:
+                    return result
+            return None
+
         return None
 
+    def _normalize_hash(self, tx_hash: str) -> Optional[str]:
+        """Hash'i temizle: 0x öneki kaldır/ekle, küçük harfe çevir."""
+        if not tx_hash:
+            return None
+        h = tx_hash.strip()
+        # "0x" veya "0X" prefix'i kaldır (Etherscan API başında 0x olmadan da kabul eder
+        # ama biz tutarlılık için temizleyelim)
+        if h.lower().startswith('0x'):
+            h = h[2:]
+        return h
+
+    def _try_chain(self, chain: str, h: str) -> Optional[TxDetails]:
+        """Belirli bir zincirden çekmeyi dene."""
+        if chain in ('bitcoin', 'litecoin', 'dogecoin'):
+            return self._fetch_utxo(chain, h)
+        if chain in ('ethereum', 'bsc', 'polygon', 'arbitrum'):
+            return self._fetch_evm(chain, h)
+        if chain == 'tron':
+            return self._fetch_tron(h)
+        return None
+
+    def _fetch_evm_or_tron(self, h: str) -> Optional[TxDetails]:
+        """64 hex hash için akıllı tahmin: TRON veya EVM zincirleri.
+        Sıralama: Tron (TRC20 USDT en yaygın Türk kullanımı) → Ethereum → diğer EVM'ler."""
+        # 1) Önce TRON dene (Türk kullanıcıları için en olası)
+        tron_result = self._fetch_tron(h)
+        if tron_result and (
+            tron_result.amount is not None
+            or tron_result.from_address
+            or tron_result.to_address
+        ):
+            return tron_result
+
+        # 2) EVM zincirlerini sırayla dene
+        for chain in ('ethereum', 'bsc', 'polygon', 'arbitrum'):
+            result = self._fetch_evm(chain, h)
+            if result and (
+                result.amount is not None
+                or result.from_address
+                or result.to_address
+            ):
+                return result
+
+        return tron_result  # en azından TRON verisini döndür (boş da olsa)
+
     def detect_chain(self, tx_hash: str) -> str:
-        """Hash uzunluğu & formatından zinciri tahmin et."""
-        h = (tx_hash or '').strip()
+        """Hash uzunluğu & formatından zinciri tahmin et.
+        Akıllı tahmin: Türk kullanıcıları için 64 hex hash genelde TRON/USDT-TRC20."""
+        h = self._normalize_hash(tx_hash)
         if not h:
             return 'unknown'
         if re.fullmatch(r'[0-9a-fA-F]{64}', h):
-            # 64 hex: ETH/EVM/TRX hepsi için ortak; TRC20 token transferini tercih et
-            # (Türk kullanıcıları için USDT gönderimleri TRC20 çoğunlukta)
-            return 'tron' if self._looks_like_tron_tx(h) else 'ethereum'
+            # 64 hex: öncelik TRON'da (Türk kullanımı)
+            return 'tron'
         if re.fullmatch(r'[0-9a-fA-F]{40}', h):  # adres, tx değil
             return 'unknown'
-        if re.fullmatch(r'[0-9a-fA-F]{64}', h):
-            return 'bitcoin'
-        # BTC/LTC/DOGE genelde base58
         if re.fullmatch(r'[1-9A-HJ-NP-Za-km-z]{60,70}', h):
-            # Ayırt etmek zor; önce mempool'a BTC olarak sor, başarısız olursa LTC/DOGE dene
-            return 'bitcoin'
+            return 'bitcoin'  # base58 - UTXO zincirleri
         return 'unknown'
-
-    def _looks_like_tron_tx(self, h: str) -> bool:
-        """Tron tx hash genelde 64 hex; ama ETH ile aynı formatta.
-        Belirgin bir ayrım yok; default olarak Ethereum varsayalım (Etherscan tüm EVM'i kapsar)."""
-        return False
 
     # ----------------- UTXO -----------------
     def _fetch_utxo(self, chain: str, tx_hash: str) -> Optional[TxDetails]:

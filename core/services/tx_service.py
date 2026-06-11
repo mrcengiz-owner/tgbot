@@ -61,6 +61,42 @@ ASSET_NAME_TO_SYMBOL = {
     'USD₮': 'USDT',
 }
 
+# Ağ standardı ipucu (TRC20, ERC20, BEP20, vs) - mesajda "TRC20 USDT" gibi geçiyorsa
+NETWORK_HINT_REGEX = re.compile(
+    r'(?i)\b('
+    r'TRC[\-\s]?20|TRC[\-\s]?10|TRON|'
+    r'ERC[\-\s]?20|ETH(?:\s*MAINNET)?|ETHEREUM|'
+    r'BEP[\-\s]?20|BSC|BNB(?:\s*CHAIN)?|'
+    r'POLYGON|MATIC|POL(?:\s*CHAIN)?|'
+    r'ARBITRUM|ARB(?:\s*ONE)?|'
+    r'BITCOIN|BTC(?:\s*MAINNET)?'
+    r')\b',
+)
+
+NETWORK_NAME_TO_CHAIN = {
+    'TRC20': 'tron',
+    'TRC-20': 'tron',
+    'TRC10': 'tron',
+    'TRC-10': 'tron',
+    'TRON': 'tron',
+    'ERC20': 'ethereum',
+    'ERC-20': 'ethereum',
+    'ETH': 'ethereum',
+    'ETHEREUM': 'ethereum',
+    'BEP20': 'bsc',
+    'BEP-20': 'bsc',
+    'BSC': 'bsc',
+    'BNB': 'bsc',
+    'POLYGON': 'polygon',
+    'MATIC': 'polygon',
+    'POL': 'polygon',
+    'ARBITRUM': 'arbitrum',
+    'ARB': 'arbitrum',
+    'BITCOIN': 'bitcoin',
+    'BTC': 'bitcoin',
+    'BTC MAINNET': 'bitcoin',
+}
+
 
 class TxService:
     """Webhook mesajından tx çıkar, çözümle, Telegram'a yanıt gönder."""
@@ -88,6 +124,16 @@ class TxService:
             return None
         raw = m.group(1).upper()
         return ASSET_NAME_TO_SYMBOL.get(raw, raw)
+
+    def detect_network_hint(self, text: str) -> Optional[str]:
+        """Mesajdan ağ ipucu çıkar: 'TRC20 USDT' → 'tron', 'ERC20' → 'ethereum'."""
+        if not text:
+            return None
+        m = NETWORK_HINT_REGEX.search(text)
+        if not m:
+            return None
+        raw = m.group(1).upper()
+        return NETWORK_NAME_TO_CHAIN.get(raw)
 
     def process(
         self,
@@ -142,9 +188,11 @@ class TxService:
 
         # Varlık ipucu (opsiyonel) - kullanıcı "USDT 100" gibi yazdıysa
         asset_hint = self.detect_asset_hint(message_text)
+        # Ağ ipucu (opsiyonel) - kullanıcı "TRC20" veya "ERC20" yazdıysa
+        network_hint = self.detect_network_hint(message_text)
 
         start = time.time()
-        details = self.explorer.fetch(tx_hash)
+        details = self.explorer.fetch(tx_hash, hint_chain=network_hint)
         if details is None:
             record.status = 'failed'
             record.error_message = 'Explorer verisi alınamadı (zincir/format desteklenmiyor olabilir)'
@@ -188,11 +236,31 @@ class TxService:
         return reply_text
 
     # ----------------- Format -----------------
+    @staticmethod
+    def _standard_label(chain: str, asset: str) -> str:
+        """Zincir + varlık kombinasyonundan 'TRC20 USDT' gibi insan-okunabilir standart üretir."""
+        if not chain:
+            return asset or '?'
+        chain_lower = (chain or '').lower()
+        asset_up = (asset or '').upper()
+        if chain_lower == 'tron' and asset_up in ('USDT', 'USDC', 'TUSD', 'BUSD'):
+            return f'TRC20 {asset_up}'
+        if chain_lower == 'ethereum' and asset_up in ('USDT', 'USDC', 'DAI', 'BUSD'):
+            return f'ERC20 {asset_up}'
+        if chain_lower == 'bsc' and asset_up in ('USDT', 'USDC', 'BUSD', 'CAKE'):
+            return f'BEP20 {asset_up}'
+        if chain_lower == 'polygon' and asset_up in ('USDT', 'USDC'):
+            return f'Polygon {asset_up}'
+        if chain_lower == 'arbitrum' and asset_up in ('USDT', 'USDC'):
+            return f'Arbitrum {asset_up}'
+        return asset_up
+
     def _format_resolved(self, record, elapsed: float = 0.0) -> str:
         chain_label = dict(record._meta.get_field('detected_chain').choices).get(
             record.detected_chain, record.detected_chain.upper()
         )
         asset = record.asset_symbol or '?'
+        standard = self._standard_label(record.detected_chain, asset)
         amount = record.amount if record.amount is not None else Decimal('0')
         amount_str = self._format_amount(amount)
         rate = record.try_rate
@@ -207,11 +275,16 @@ class TxService:
             except (InvalidOperation, AttributeError):
                 rate_str = str(rate)
 
+        # Varlık satırı: standart etiket ekle (örn. "USDT (TRC20)")
+        asset_display = asset
+        if standard and standard != asset and standard != '?':
+            asset_display = f'{standard}'
+
         lines = [
             '🪙 <b>Kripto İşlem Detayı</b>',
             '',
-            f'💎 <b>Varlık:</b> {asset}',
-            f'🔢 <b>Miktar:</b> <code>{amount_str}</code>',
+            f'💎 <b>Varlık:</b> <code>{asset_display}</code>',
+            f'🔢 <b>Miktar:</b> <code>{amount_str}</code> {asset}',
             f'💱 <b>Anlık Kur ({rate_source}):</b> <code>{rate_str}</code> ₺',
             f'🇹🇷 <b>TL Karşılığı:</b> <code>{value_str}</code> ₺',
             '',
