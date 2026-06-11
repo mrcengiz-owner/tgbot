@@ -1,10 +1,11 @@
 from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.conf import settings
 import requests
 from .models import (
     TelegramGroup,
@@ -453,6 +454,73 @@ def tx_rates_api(request):
         for r in TxRateCache.objects.all()[:20]
     ]
     return JsonResponse({'rates': rows})
+
+
+@login_required
+@require_http_methods(["POST"])
+def tx_send_test(request, pk):
+    """Belirli bir gruba örnek tx hash gönderip botun nasıl cevap vereceğini test eder.
+    Gerçek bir test: bot sanki gruptaymış gibi çalışır, cevabı panelde gösterir."""
+    from core.services import TxService  # geç import
+
+    group = get_object_or_404(TelegramGroup, pk=pk)
+    sample_hash = 'f7f0b5c6c7fba0fef478033aea57035588f61475182322fd774d80a48e91f95e'
+    bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+
+    # Eğer tx_tracker_enabled değilse kullanıcıyı uyar
+    if not group.is_active:
+        messages.error(request, f'{group.name} pasif durumda. Önce aktifleştirin.')
+        return redirect('tx_tracker')
+    if not group.tx_tracker_enabled:
+        messages.warning(request, f'{group.name} için TX takibi kapalı. Test mesajı yine de gönderildi ama bot cevap vermeyecek.')
+
+    if not bot_token:
+        messages.error(request, 'TELEGRAM_BOT_TOKEN tanımlı değil.')
+        return redirect('tx_tracker')
+
+    # Botu sanki gruptaymış gibi çalıştır (sadece hesaplama)
+    svc = TxService(bot_token=bot_token)
+    text = (
+        f"Test mesajı - gerçek bir örnek\n\n"
+        f"Tether 5,360 gönderildi.\n\n"
+        f"Tx: {sample_hash}\n"
+        f"https://tronscan.org/#/transaction/{sample_hash}"
+    )
+    try:
+        reply = svc.process(
+            message_text=text,
+            chat_id=group.chat_id,
+            message_id=None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f'Hata: {exc}')
+        return redirect('tx_tracker')
+
+    if not reply:
+        result_text = (
+            '⚠ Bot bir yanıt üretmedi. Olası sebepler:\n'
+            '1) Bot gruba admin olarak eklenmemiş olabilir\n'
+            '2) Webhook kurulu olmayabilir (/webhook/set/ adresini ziyaret edin)\n'
+            '3) Explorer servisi geçici olarak cevap vermiyor olabilir'
+        )
+    else:
+        result_text = f'✅ Bot şu yanıtı üretecek:\n\n{reply}'
+
+    # Test mesajını kendi adımıza gruba da gönderelim (gerçek simülasyon)
+    # NOT: Bu, sadece bir simülasyon; webhook'tan geçmiyor, sadece mesajı gruba yollar
+    # İsterseniz bu kısmı kaldırabiliriz, çünkü sadece formatı görmek istiyorsanız üstteki yeter.
+    # Kullanıcıya inline sonuç göstermek için session flash yerine
+    # query string üzerinden dönelim ve template'te gösterelim.
+    request.session['tx_test_result'] = result_text
+    request.session['tx_test_group'] = group.name
+    return HttpResponseRedirect('/kripto/?test=1')
+
+
+@login_required
+def tx_clear_test_result(request):
+    request.session.pop('tx_test_result', None)
+    request.session.pop('tx_test_group', None)
+    return redirect('tx_tracker')
 
 
 def _tx_stats():

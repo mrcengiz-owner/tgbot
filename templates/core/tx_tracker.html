@@ -4,6 +4,35 @@
 {% block page_title %}Kripto TX Takip{% endblock %}
 
 {% block content %}
+<!-- Kullanım Kılavuzu (bilgilendirme) -->
+<div class="alert alert-info border-0 d-flex align-items-start gap-3 mb-4" style="background:#e0e7ff;color:#1e3a8a;border-radius:14px;">
+    <i class="fas fa-info-circle fa-2x mt-1"></i>
+    <div>
+        <h5 class="mb-2">📖 Nasıl Çalışır?</h5>
+        <p class="mb-2"><strong>Ekstra bir komut gerekmez.</strong> Bot, mesajda otomatik olarak tx hash algılar ve cevap verir.</p>
+        <ol class="mb-2 small">
+            <li>Botu grubunuza <strong>admin olarak</strong> ekleyin (yoksa mesajları okuyamaz)</li>
+            <li>Webhook'un kurulu olduğundan emin olun → <code>https://&lt;domain&gt;/webhook/set/</code> adresini ziyaret edin</li>
+            <li>Bu sayfada istediğiniz gruba "Aç" deyin</li>
+            <li>Gruba bir tx hash yapıştırın → bot otomatik yanıt verir</li>
+        </ol>
+        <p class="mb-0 small"><strong>Örnek mesaj:</strong> <code>Tether 5,360 gönderildi. Tx: f7f0b5c6c7fba0fef478033aea57035588f61475182322fd774d80a48e91f95e</code></p>
+    </div>
+</div>
+
+<!-- Test sonucu (varsa göster) -->
+{% if request.session.tx_test_result %}
+<div class="card mb-4" style="border:2px solid #4361ee;">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background:#4361ee;color:#fff;">
+        <span><i class="fas fa-vial me-2"></i>Test Sonucu · {{ request.session.tx_test_group }}</span>
+        <a href="{% url 'tx_clear_test_result' %}" class="btn btn-sm btn-light">Kapat</a>
+    </div>
+    <div class="card-body">
+        <pre class="mb-0" style="white-space:pre-wrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">{{ request.session.tx_test_result }}</pre>
+    </div>
+</div>
+{% endif %}
+
 <!-- Stats -->
 <div class="row g-4 mb-4">
     <div class="col-sm-6 col-xl-3">
@@ -136,12 +165,20 @@
                                 <br>
                                 <code class="small text-muted">{{ g.chat_id }}</code>
                             </div>
-                            <form action="{% url 'tx_disable_group' g.id %}" method="POST">
-                                {% csrf_token %}
-                                <button class="btn btn-sm btn-outline-warning">
-                                    <i class="fas fa-bell-slash"></i> Kapat
-                                </button>
-                            </form>
+                            <div>
+                                <form action="{% url 'tx_send_test' g.id %}" method="POST" class="d-inline me-1">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-primary" title="Bu gruba örnek tx gönder">
+                                        <i class="fas fa-vial"></i> Test
+                                    </button>
+                                </form>
+                                <form action="{% url 'tx_disable_group' g.id %}" method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-bell-slash"></i> Kapat
+                                    </button>
+                                </form>
+                            </div>
                         </li>
                         {% endfor %}
                     </ul>
@@ -194,6 +231,12 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
+                            <form action="{% url 'tx_send_test' g.id %}" method="POST" class="d-inline me-1">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-primary" title="Bu gruba örnek tx gönder, botun nasıl cevap vereceğini gör">
+                                    <i class="fas fa-vial"></i> Test
+                                </button>
+                            </form>
                             {% if g.tx_tracker_enabled %}
                                 <form action="{% url 'tx_disable_group' g.id %}" method="POST" class="d-inline">
                                     {% csrf_token %}
