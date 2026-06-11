@@ -206,13 +206,29 @@ class TxService:
         except (InvalidOperation, TypeError):
             amount = Decimal('0')
 
-        rate_result = self.rate.get_try_rate(asset_symbol)
-        try_rate = rate_result.get('rate') if rate_result else None
-        rate_source = rate_result.get('source') if rate_result else None
+        # Tüm kaynaklardan kur çek
+        all_rates = self.rate.get_all_try_rates(asset_symbol)
+        try_rate = all_rates.get('average')
+        rate_source = f"{all_rates.get('successful_count', 0)} kaynak ort."
+        if all_rates.get('error') and not try_rate:
+            rate_source = 'bilinmiyor'
 
         try_value = None
         if try_rate and amount:
             try_value = (amount * try_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # Tüm kaynakları ayrıntılı log için sakla (raw_payload'a ek)
+        rates_payload = {
+            'sources': [
+                {'source': s['source'], 'rate': str(s['rate']), 'pair': s.get('pair', ''), 'cached': s.get('cached', False)}
+                for s in all_rates.get('sources', [])
+            ],
+            'average': str(all_rates.get('average')) if all_rates.get('average') is not None else None,
+            'median': str(all_rates.get('median')) if all_rates.get('median') is not None else None,
+            'min': str(all_rates.get('min')) if all_rates.get('min') is not None else None,
+            'max': str(all_rates.get('max')) if all_rates.get('max') is not None else None,
+            'count': all_rates.get('successful_count', 0),
+        }
 
         record.detected_chain = details.chain
         record.asset_symbol = asset_symbol
@@ -225,7 +241,10 @@ class TxService:
         record.explorer_url = details.explorer_url
         record.status = 'resolved'
         record.resolved_at = timezone.now()
-        record.raw_payload = details.raw
+        # Hem raw hem rate'leri sakla
+        combined_payload = dict(details.raw or {})
+        combined_payload['_rates'] = rates_payload
+        record.raw_payload = combined_payload
         record.error_message = None
         record.save()
 
@@ -264,9 +283,13 @@ class TxService:
         amount = record.amount if record.amount is not None else Decimal('0')
         amount_str = self._format_amount(amount)
         rate = record.try_rate
-        rate_source = (record.rate_source or 'bilinmiyor').upper()
         value = record.try_value if record.try_value is not None else Decimal('0')
         value_str = self._format_money(value)
+
+        # Raw payload'dan rate kaynaklarını çek
+        rates_payload = {}
+        if isinstance(record.raw_payload, dict):
+            rates_payload = record.raw_payload.get('_rates', {}) or {}
 
         rate_str = '—'
         if rate is not None:
@@ -275,21 +298,46 @@ class TxService:
             except (InvalidOperation, AttributeError):
                 rate_str = str(rate)
 
-        # Varlık satırı: standart etiket ekle (örn. "USDT (TRC20)")
-        asset_display = asset
-        if standard and standard != asset and standard != '?':
-            asset_display = f'{standard}'
+        asset_display = standard if (standard and standard != '?') else asset
 
         lines = [
             '🪙 <b>Kripto İşlem Detayı</b>',
             '',
             f'💎 <b>Varlık:</b> <code>{asset_display}</code>',
             f'🔢 <b>Miktar:</b> <code>{amount_str}</code> {asset}',
-            f'💱 <b>Anlık Kur ({rate_source}):</b> <code>{rate_str}</code> ₺',
             f'🇹🇷 <b>TL Karşılığı:</b> <code>{value_str}</code> ₺',
             '',
-            f'🌐 <b>Ağ:</b> {chain_label}',
         ]
+
+        # Kur detayları bloğu
+        sources = rates_payload.get('sources', []) if rates_payload else []
+        if sources:
+            lines.append(f'💱 <b>Anlık Kurlar ({len(sources)} kaynak):</b>')
+            # Satır başına her kaynak
+            source_icons = {
+                'btcturk': '🇹🇷', 'paribu': '🇹🇷', 'bitturk': '🇹🇷',
+                'binance': '🌐', 'coingecko': '🌐',
+            }
+            for s in sources:
+                icon = source_icons.get(s.get('source', ''), '•')
+                name = s.get('source', '?').upper()
+                rate_val = s.get('rate', '?')
+                cached = ' 📦' if s.get('cached') else ''
+                lines.append(f'   {icon} <code>{rate_val} ₺</code> · {name}{cached}')
+            avg = rates_payload.get('average')
+            med = rates_payload.get('median')
+            mn = rates_payload.get('min')
+            mx = rates_payload.get('max')
+            if avg and med:
+                lines.append(f'   📊 Ort: <code>{avg}</code> · Med: <code>{med}</code> · Min: <code>{mn}</code> · Max: <code>{mx}</code> ₺')
+            lines.append(f'   ⮕ <b>Ortalamayla hesaplanan:</b> <code>{rate_str}</code> ₺')
+        else:
+            # Eski tek kaynak davranışı (geriye uyumluluk)
+            rate_source = (record.rate_source or 'bilinmiyor').upper()
+            lines.append(f'💱 <b>Anlık Kur ({rate_source}):</b> <code>{rate_str}</code> ₺')
+
+        lines.append('')
+        lines.append(f'🌐 <b>Ağ:</b> {chain_label}')
         if record.from_address:
             lines.append(f'📤 <b>Gönderen:</b> <code>{self._short_addr(record.from_address)}</code>')
         if record.to_address:
