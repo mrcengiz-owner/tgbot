@@ -1,16 +1,18 @@
 # Kripto TX Takip Modülü
 
 Telegram gruplarında paylaşılan transaction id'leri otomatik algılayıp, blockchain
-doğrulaması yapıp, Türkiye borsalarından (BTCTurk, Paribu) anlık TL kuru çekip
-detaylı biçimlendirilmiş mesaj olarak gruba yansıtır.
+doğrulaması yapıp, Türkiye borsalarından (BTCTurk, Paribu, Bitturk, Cointr) ve
+uluslararası borsalardan (CoinGecko, Binance) anlık TL kuru çekip detaylı
+biçimlendirilmiş mesaj olarak gruba yansıtır.
 
 ## Davranış
 
 - Bir kayıtlı Telegram grubunda kullanıcı bir mesaj yazdığında bot, mesajdaki
   64 haneli hex (EVM / TRX) veya 60+ base58 (BTC/LTC/DOGE) tx hash'ini tespit eder.
 - Tx geçerliyse ilgili explorer'dan miktar, gönderici ve alıcı adres çekilir.
-- Varlık sembolü (USDT, BTC vb.) için sırasıyla BTCTurk → Paribu'dan anlık
-  TL kuru alınır. 30 saniyelik cache uygulanır.
+- Varlık sembolü (USDT, BTC vb.) için sırasıyla BTCTurk → Paribu → Bitturk →
+  Cointr → CoinGecko → Binance (USDT üzerinden) anlık TL kuru alınır. Ortalama
+  ve medyan hesaplanır. 30 saniyelik cache uygulanır.
 - Sonuç aşağıdaki formatta gruba yanıt olarak gönderilir:
 
 ```
@@ -86,7 +88,8 @@ python manage.py test core.tests
 ## Dosya Haritası
 
 - `core/models.py` — `TxTracker`, `TxRateCache` + `TelegramGroup.tx_tracker_enabled`
-- `core/services/rate_service.py` — BTCTurk & Paribu public ticker + 30s cache
+- `core/services/rate_service.py` — 5 farklı borsa (BTCTurk, Paribu, Bitturk,
+  Cointr, Binance) + CoinGecko public ticker + 30s cache
 - `core/services/explorer_service.py` — Çoklu zincir explorer entegrasyonu
 - `core/services/tx_service.py` — Orkestrasyon, regex, formatlama
 - `webhook_bot.py` — Telegram webhook handler'ı tx'leri yakalar

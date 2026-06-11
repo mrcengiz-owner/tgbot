@@ -251,7 +251,16 @@ class ExplorerService:
 
     # ----------------- Tron / TRC20 -----------------
     def _fetch_tron(self, tx_hash: str) -> Optional[TxDetails]:
+        """Tron tx'ini çeker. Önce TRC20 events dene (USDT gibi token transferleri),
+        bulamazsan native TRX transferi olarak yorumla."""
         headers = {'TRON-PRO-API-KEY': self.trongrid_key} if self.trongrid_key else {}
+
+        # 1) Önce TRC20 token transferi olarak dene (USDT vb. için)
+        trc20 = self._fetch_trc20(tx_hash, headers)
+        if trc20 and trc20.amount is not None and trc20.amount > 0:
+            return trc20
+
+        # 2) TRC20 bulunamadıysa veya amount 0 döndüyse native TRX kontrolü yap
         try:
             r = requests.post(
                 'https://api.trongrid.io/wallet/gettransactionbyid',
@@ -260,7 +269,7 @@ class ExplorerService:
                 timeout=self.timeout,
             )
             if r.status_code != 200:
-                return None
+                return trc20  # elimizdeki TRC20 sonucu (amount 0 olabilir) döndür
             tx = (r.json() or {}).get('tx') or {}
             raw_data = tx.get('raw_data', {})
             contract = (raw_data.get('contract') or [{}])[0]
@@ -269,10 +278,26 @@ class ExplorerService:
             amount_trx = Decimal(amount_sun) / Decimal(10 ** 6)
             owner = parameter.get('owner_address')
             to = parameter.get('to_address')
-            # TRX native mi yoksa TRC20 mi? TRC20 ise token transfer ayrı endpoint gerekir
             contract_type = contract.get('type')
+
+            # Eğer contract_type TransferContract değilse (örn. TriggerSmartContract) ve
+            # TRC20 events boş döndüyse, bu bir smart contract çağrısıdır.
+            # Bu durumda elimizde TRC20 (amount 0) varsa onu döndürelim.
             if contract_type and contract_type != 'TransferContract':
-                return self._fetch_trc20(tx_hash, headers)
+                if trc20:
+                    return trc20
+                return TxDetails(
+                    chain='tron',
+                    asset_symbol='TRX',
+                    amount=amount_trx,
+                    from_address=self._tron_hex_to_base58(owner) if owner else None,
+                    to_address=self._tron_hex_to_base58(to) if to else None,
+                    confirmed=bool(tx.get('ret')),
+                    explorer_url=f"{EXPLORER_URLS['tron']}/{tx_hash}",
+                    raw=tx,
+                )
+
+            # Native TRX transferi
             return TxDetails(
                 chain='tron',
                 asset_symbol='TRX',
@@ -285,7 +310,7 @@ class ExplorerService:
             )
         except (requests.RequestException, ValueError, KeyError) as exc:
             logger.warning('TronGrid error: %s', exc)
-            return None
+            return trc20  # en azından TRC20 sonucunu (varsa) döndür
 
     def _fetch_trc20(self, tx_hash: str, headers: Dict) -> Optional[TxDetails]:
         try:

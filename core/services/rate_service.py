@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Birim saniye cinsinden cache süresi
 CACHE_TTL_SECONDS = 30
 
-# Varlık -> Paribu / BTCTurk / Bitturk parite eşlemesi
+# Varlık -> Paribu / BTCTurk / Bitturk / Cointr parite eşlemesi
 SYMBOL_TO_BTCTURK = {
     'USDT': 'USDT_TRY', 'BTC': 'BTC_TRY', 'ETH': 'ETH_TRY',
     'BNB': 'BNB_TRY', 'SOL': 'SOL_TRY', 'XRP': 'XRP_TRY',
@@ -47,6 +47,15 @@ SYMBOL_TO_BITTURK = {
     'DOT': 'DOT', 'LINK': 'LINK', 'USDC': 'USDC',
 }
 
+# Cointr spot parite - USDTTRY, BTCTRY vs.
+SYMBOL_TO_COINTR = {
+    'USDT': 'USDTTRY', 'BTC': 'BTCTRY', 'ETH': 'ETHTRY',
+    'BNB': 'BNBTRY', 'SOL': 'SOLTRY', 'XRP': 'XRPTRY',
+    'LTC': 'LTCTRY', 'DOGE': 'DOGETRY', 'AVAX': 'AVAXTRY',
+    'MATIC': 'MATICTRY', 'TRX': 'TRXTRY', 'ADA': 'ADATRY',
+    'DOT': 'DOTTRY', 'LINK': 'LINKTRY', 'USDC': 'USDCTRY',
+}
+
 # CoinGecko ID'leri (API path'leri)
 SYMBOL_TO_COINGECKO = {
     'USDT': 'tether', 'USDC': 'usd-coin', 'BTC': 'bitcoin',
@@ -62,6 +71,7 @@ PARIBU_URL = 'https://api.paribu.com/v2/ticker'
 BITTURK_URL = 'https://api.bitturk.com/api/v2/ticker'
 COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price'
 BINANCE_URL = 'https://api.binance.com/api/v3/ticker/price'
+COINTR_URL = 'https://api.cointr.com/api/v2/spot/market/tickers'
 
 
 class RateService:
@@ -152,13 +162,19 @@ class RateService:
             fetcher_results.append(bitturk)
             all_rates.append(bitturk['rate'])
 
-        # 4) CoinGecko (doğrudan TRY fiyatı)
+        # 4) Cointr
+        cointr = self._fetch_cointr(asset)
+        if cointr:
+            fetcher_results.append(cointr)
+            all_rates.append(cointr['rate'])
+
+        # 5) CoinGecko (doğrudan TRY fiyatı)
         cg = self._fetch_coingecko(asset)
         if cg:
             fetcher_results.append(cg)
             all_rates.append(cg['rate'])
 
-        # 5) Binance → TRY (USDT üzerinden köprü)
+        # 6) Binance → TRY (USDT üzerinden köprü)
         binance = self._fetch_binance_try(asset)
         if binance:
             fetcher_results.append(binance)
@@ -279,6 +295,40 @@ class RateService:
             return {'rate': rate, 'source': 'bitturk', 'cached': False, 'pair': pair}
         except (requests.RequestException, ValueError, KeyError) as exc:
             logger.debug('Bitturk error for %s: %s', asset, exc)
+            return None
+
+    # ----------------- Cointr -----------------
+    def _fetch_cointr(self, asset: str) -> Optional[Dict]:
+        """CoinTR.com spot ticker - TRY pariteleri. Public, auth gerektirmez."""
+        symbol = SYMBOL_TO_COINTR.get(asset)
+        if not symbol:
+            return None
+        pair = f'{asset}_TRY'
+        cached = self._cache_get(asset, 'cointr', pair)
+        if cached:
+            return cached
+        try:
+            r = requests.get(
+                COINTR_URL,
+                params={'symbol': symbol},
+                timeout=self.timeout,
+            )
+            if r.status_code != 200:
+                logger.debug('CoinTR HTTP %s for %s', r.status_code, asset)
+                return None
+            data = r.json() or {}
+            items = data.get('data') or []
+            if not items:
+                return None
+            # Cointr v2 response: {"code":"00000","data":[{"symbol":"USDTTRY","lastPr":"46.11",...}]}
+            last = items[0].get('lastPr')
+            if last in (None, '', 0, '0'):
+                return None
+            rate = Decimal(str(last))
+            self._cache_set(asset, 'cointr', pair, rate)
+            return {'rate': rate, 'source': 'cointr', 'cached': False, 'pair': pair}
+        except (requests.RequestException, ValueError, KeyError) as exc:
+            logger.debug('CoinTR error for %s: %s', asset, exc)
             return None
 
     # ----------------- CoinGecko -----------------

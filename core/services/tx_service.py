@@ -315,7 +315,7 @@ class TxService:
             lines.append(f'💱 <b>Anlık Kurlar ({len(sources)} kaynak):</b>')
             # Satır başına her kaynak
             source_icons = {
-                'btcturk': '🇹🇷', 'paribu': '🇹🇷', 'bitturk': '🇹🇷',
+                'btcturk': '🇹🇷', 'paribu': '🇹🇷', 'bitturk': '🇹🇷', 'cointr': '🇹🇷',
                 'binance': '🌐', 'coingecko': '🌐',
             }
             for s in sources:
