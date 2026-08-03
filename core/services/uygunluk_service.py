@@ -248,11 +248,14 @@ class UygunlukService:
         return group
 
     def _format_set_confirm(self, group: TelegramGroup, amount: Decimal) -> str:
-        """Saha için kısa onay — tüm liste yok."""
+        """Saha için kurumsal onay mesajı — tüm liste yok."""
         return (
-            f'<b>✅ Kasa güncellendi</b>\n\n'
-            f'🏷 <b>{_escape(group.name)}</b>\n'
-            f'💰 Uygunluk: <b>{format_tl(amount)}</b>'
+            '🟢 <b>Uygunluk alındı.</b>\n'
+            'Uygun çekim oluşması durumunda tarafınıza yönlendirilecektir. '
+            'Paneli kontrolde tutalım.\n'
+            '\n'
+            '— <b>Mobilonay</b>\n'
+            'İyi çalışmalar.'
         )
 
     def format_list(self) -> str:
