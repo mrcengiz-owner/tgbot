@@ -41,7 +41,8 @@ def group_list(request):
 
     groups = TelegramGroup.objects.all().order_by('name')
     total_kasa = (
-        TelegramGroup.objects.filter(is_active=True).aggregate(t=Sum('kasa_uygunluk'))['t']
+        TelegramGroup.objects.filter(is_active=True, uygunluk_yetkili=False)
+        .aggregate(t=Sum('kasa_uygunluk'))['t']
         or Decimal('0')
     )
     return render(request, 'core/groups.html', {
@@ -100,6 +101,18 @@ def group_toggle_tracker(request, pk):
     group.save()
     state = "aktifleştirildi" if group.tx_tracker_enabled else "devre dışı bırakıldı"
     messages.success(request, f'Kripto TX takibi {group.name} için {state}.')
+    return redirect('groups')
+
+
+@login_required
+@require_http_methods(["POST"])
+def group_toggle_yetkili(request, pk):
+    """Uygunluk yetkili grup bayrağını aç/kapat."""
+    group = get_object_or_404(TelegramGroup, pk=pk)
+    group.uygunluk_yetkili = not group.uygunluk_yetkili
+    group.save(update_fields=['uygunluk_yetkili', 'updated_at'])
+    state = "yetkili yapıldı" if group.uygunluk_yetkili else "yetkisi kaldırıldı"
+    messages.success(request, f'{group.name} uygunluk için {state}.')
     return redirect('groups')
 
 

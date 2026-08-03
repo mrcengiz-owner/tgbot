@@ -13,6 +13,7 @@ urlpatterns = [
     path('gruplar/sil/<int:pk>/', views.group_delete, name='group_delete'),
     path('gruplar/durum/<int:pk>/', views.group_toggle, name='group_toggle'),
     path('gruplar/tx-takip/<int:pk>/', views.group_toggle_tracker, name='group_toggle_tracker'),
+    path('gruplar/yetkili/<int:pk>/', views.group_toggle_yetkili, name='group_toggle_yetkili'),
     path('gruplar/kasa/<int:pk>/', views.group_set_kasa, name='group_set_kasa'),
     path('ayarlar/', views.settings_view, name='settings'),
     path('sablonlar/', views.templates, name='templates'),

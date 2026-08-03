@@ -13,6 +13,11 @@ class TelegramGroup(models.Model):
         verbose_name="Kripto TX Takibi Aktif mi?",
         help_text="Bu grupta gönderilen transaction id'ler otomatik algılansın mı?",
     )
+    uygunluk_yetkili = models.BooleanField(
+        default=False,
+        verbose_name="Uygunluk Yetkili Grup mu?",
+        help_text="True ise /uygunluk komutu tüm sahaların kasa listesini gösterir. Sahalar sadece kendi tutarını yazar.",
+    )
     kasa_uygunluk = models.DecimalField(
         max_digits=18,
         decimal_places=2,

@@ -1,9 +1,8 @@
 """
 Kasa uygunluk servisi.
 
-Telegram gruplarında `/uygunluk 100 K` komutu ile:
-- İlgili grubun kasa tutarını günceller
-- Tüm aktif grupların kasa listesini + toplamı formatlar
+- Saha: `/uygunluk 100 K` → sadece kendi kasasını günceller (onay mesajı).
+- Yetkili grup: `/uygunluk` → tüm sahaların kasa listesi + toplam.
 """
 from __future__ import annotations
 
@@ -81,7 +80,6 @@ def parse_amount(raw: str) -> Optional[Decimal]:
     if suffix:
         value *= _SUFFIX_MULT[suffix]
 
-    # Negatif / aşırı değerleri reddet
     if value < 0:
         return None
     if value > Decimal('999999999999'):
@@ -96,31 +94,23 @@ def _parse_number(raw: str) -> Decimal:
     if not s:
         raise ValueError('boş sayı')
 
-    # Hem nokta hem virgül varsa: sonuncusu ondalık ayırıcıdır
     if '.' in s and ',' in s:
         if s.rfind(',') > s.rfind('.'):
-            # 1.000,50 → Avrupa
             s = s.replace('.', '').replace(',', '.')
         else:
-            # 1,000.50 → ABD
             s = s.replace(',', '')
     elif ',' in s:
         parts = s.split(',')
         if len(parts) == 2 and len(parts[1]) <= 2:
-            # 1,5 veya 100,50 → ondalık
             s = s.replace(',', '.')
         else:
-            # 100,000 → binlik
             s = s.replace(',', '')
     elif '.' in s:
         parts = s.split('.')
         if len(parts) == 2 and len(parts[1]) <= 2 and len(parts[0]) <= 3:
-            # 1.5 → ondalık (suffix ile birlikte kullanılır)
             pass
         elif all(len(p) == 3 for p in parts[1:]):
-            # 100.000 veya 1.000.000 → binlik
             s = s.replace('.', '')
-        # aksi halde Decimal doğrudan parse eder (1.5)
 
     return Decimal(s)
 
@@ -133,7 +123,6 @@ def format_tl(amount: Decimal) -> str:
     if quantized == quantized.to_integral():
         whole = int(quantized)
         return f'{whole:,}'.replace(',', '.')
-    # Kuruşlu: 1.234,56
     sign = '-' if quantized < 0 else ''
     quantized = abs(quantized)
     whole = int(quantized)
@@ -142,7 +131,7 @@ def format_tl(amount: Decimal) -> str:
 
 
 class UygunlukService:
-    """Kasa uygunluk güncelleme ve listeleme."""
+    """Kasa uygunluk güncelleme ve yetkili listeleme."""
 
     def handle(
         self,
@@ -153,11 +142,9 @@ class UygunlukService:
         username: str = '',
     ) -> Tuple[str, str]:
         """
-        Komutu işle.
-
         Returns:
             (reply_html, action_label)
-            action_label: 'uygunluk_set' | 'uygunluk_list' | 'uygunluk_error'
+            action_label: 'uygunluk_set' | 'uygunluk_list' | 'uygunluk_denied' | 'uygunluk_error'
         """
         first_line = (text or '').strip().splitlines()[0].strip()
         match = _CMD_RE.match(first_line)
@@ -165,46 +152,71 @@ class UygunlukService:
             return self._error('Geçersiz /uygunluk komutu.'), 'uygunluk_error'
 
         amount_raw = (match.group(1) or '').strip()
+        group = self._get_group(str(chat_id))
 
-        if amount_raw:
-            amount = parse_amount(amount_raw)
-            if amount is None:
+        # --- Liste isteği: yalnız yetkili grup ---
+        if not amount_raw:
+            if group is None:
                 return (
                     self._error(
-                        f'Geçersiz tutar: <code>{_escape(amount_raw)}</code>\n'
-                        f'Örnek: <code>/uygunluk 100 K</code> veya <code>/uygunluk 1.5 M</code>'
+                        f'Bu grup panelde kayıtlı değil (chat_id: <code>{_escape(str(chat_id))}</code>).'
                     ),
                     'uygunluk_error',
                 )
-            err = self._set_group_amount(
-                chat_id=str(chat_id),
-                chat_title=chat_title or '',
-                amount=amount,
-                raw_text=first_line[:255],
-                user_id=user_id,
-                username=username or '',
-            )
-            if err:
-                return self._error(err), 'uygunluk_error'
-            action = 'uygunluk_set'
-        else:
-            action = 'uygunluk_list'
+            if not group.uygunluk_yetkili:
+                return (
+                    self._error(
+                        'Tüm sahaların listesini yalnızca <b>yetkili grup</b> görebilir.\n'
+                        'Kasanızı güncellemek için: <code>/uygunluk 100 K</code>'
+                    ),
+                    'uygunluk_denied',
+                )
+            return self.format_list(), 'uygunluk_list'
 
-        return self.format_list(), action
+        # --- Tutar yazma: saha kendi kasasını günceller (liste YOK) ---
+        amount = parse_amount(amount_raw)
+        if amount is None:
+            return (
+                self._error(
+                    f'Geçersiz tutar: <code>{_escape(amount_raw)}</code>\n'
+                    f'Örnek: <code>/uygunluk 100 K</code> veya <code>/uygunluk 1.5 M</code>'
+                ),
+                'uygunluk_error',
+            )
+
+        result = self._set_group_amount(
+            group=group,
+            chat_id=str(chat_id),
+            chat_title=chat_title or '',
+            amount=amount,
+            raw_text=first_line[:255],
+            user_id=user_id,
+            username=username or '',
+        )
+        if isinstance(result, str):
+            return self._error(result), 'uygunluk_error'
+
+        updated_group = result
+        return self._format_set_confirm(updated_group, amount), 'uygunluk_set'
+
+    def _get_group(self, chat_id: str) -> Optional[TelegramGroup]:
+        try:
+            return TelegramGroup.objects.get(chat_id=str(chat_id))
+        except TelegramGroup.DoesNotExist:
+            return None
 
     def _set_group_amount(
         self,
+        group: Optional[TelegramGroup],
         chat_id: str,
         chat_title: str,
         amount: Decimal,
         raw_text: str,
         user_id: Optional[int],
         username: str,
-    ) -> Optional[str]:
-        """Grubun kasa tutarını güncelle. Hata mesajı veya None."""
-        try:
-            group = TelegramGroup.objects.get(chat_id=str(chat_id))
-        except TelegramGroup.DoesNotExist:
+    ):
+        """Grubun kasa tutarını güncelle. Hata str veya güncellenmiş TelegramGroup."""
+        if group is None:
             return (
                 f'Bu grup panelde kayıtlı değil (chat_id: <code>{_escape(str(chat_id))}</code>).\n'
                 f'Önce web panelden grubu ekleyin.'
@@ -213,7 +225,6 @@ class UygunlukService:
         if not group.is_active:
             return 'Bu grup panelde pasif durumda. Önce aktifleştirin.'
 
-        # Telegram başlığı değiştiyse ismi senkronize et
         if chat_title and group.name != chat_title:
             group.name = chat_title[:255]
 
@@ -234,20 +245,30 @@ class UygunlukService:
             'Uygunluk güncellendi: %s (%s) %s → %s',
             group.name, chat_id, previous, amount,
         )
-        return None
+        return group
+
+    def _format_set_confirm(self, group: TelegramGroup, amount: Decimal) -> str:
+        """Saha için kısa onay — tüm liste yok."""
+        return (
+            f'<b>✅ Kasa güncellendi</b>\n\n'
+            f'🏷 <b>{_escape(group.name)}</b>\n'
+            f'💰 Uygunluk: <b>{format_tl(amount)}</b>'
+        )
 
     def format_list(self) -> str:
-        """Tüm aktif grupların kasa listesi + toplam (HTML)."""
+        """Tüm aktif sahaların (yetkili hariç) kasa listesi + toplam (HTML)."""
         groups = list(
-            TelegramGroup.objects.filter(is_active=True).order_by('name')
+            TelegramGroup.objects.filter(
+                is_active=True,
+                uygunluk_yetkili=False,
+            ).order_by('name')
         )
         if not groups:
             return (
                 '<b>📊 Kasa Uygunluk</b>\n\n'
-                '<i>Aktif grup bulunamadı.</i>'
+                '<i>Aktif saha bulunamadı.</i>'
             )
 
-        # İsim genişliği (monospace hizalama)
         name_width = max(len(g.name) for g in groups)
         name_width = min(max(name_width, 8), 28)
 
@@ -273,9 +294,10 @@ class UygunlukService:
         return '\n'.join(lines)
 
     def total_uygunluk(self) -> Decimal:
-        result = TelegramGroup.objects.filter(is_active=True).aggregate(
-            total=Sum('kasa_uygunluk')
-        )
+        result = TelegramGroup.objects.filter(
+            is_active=True,
+            uygunluk_yetkili=False,
+        ).aggregate(total=Sum('kasa_uygunluk'))
         return result['total'] or Decimal('0')
 
     @staticmethod

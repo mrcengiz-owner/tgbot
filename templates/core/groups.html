@@ -30,10 +30,13 @@
                 </thead>
                 <tbody>
                     {% for group in groups %}
-                    {% if group.is_active %}
+                    {% if group.is_active and not group.uygunluk_yetkili %}
                     <tr>
                         <td>
                             <strong>{{ group.name }}</strong>
+                            {% if group.uygunluk_yetkili %}
+                                <span class="badge bg-primary ms-1">Yetkili</span>
+                            {% endif %}
                             <div><code class="small">{{ group.chat_id }}</code></div>
                         </td>
                         <td class="text-end fw-semibold">{{ group.kasa_uygunluk|floatformat:0 }} ₺</td>
@@ -92,6 +95,9 @@
                             {% if group.tx_tracker_enabled %}
                                 <span class="badge bg-warning text-dark"><i class="fas fa-coins me-1"></i>TX Takip</span>
                             {% endif %}
+                            {% if group.uygunluk_yetkili %}
+                                <span class="badge bg-primary"><i class="fas fa-shield-alt me-1"></i>Yetkili</span>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -104,19 +110,26 @@
                     <p class="text-muted small mb-3">{{ group.description }}</p>
                     {% endif %}
 
-                    <div class="d-flex gap-2 mb-2">
+                    <div class="d-flex gap-2 mb-2 flex-wrap">
                         <form action="{% url 'group_toggle' group.id %}" method="POST" style="display:inline;">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-sm {% if group.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} flex-fill">
+                            <button type="submit" class="btn btn-sm {% if group.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
                                 <i class="fas {% if group.is_active %}fa-pause{% else %}fa-play{% endif %} me-1"></i>
                                 {{ group.is_active|yesno:"Pasifleştir,Aktifleştir" }}
                             </button>
                         </form>
                         <form action="{% url 'group_toggle_tracker' group.id %}" method="POST" style="display:inline;">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-sm {% if group.tx_tracker_enabled %}btn-outline-warning{% else %}btn-outline-info{% endif %} flex-fill">
+                            <button type="submit" class="btn btn-sm {% if group.tx_tracker_enabled %}btn-outline-warning{% else %}btn-outline-info{% endif %}">
                                 <i class="fas fa-coins me-1"></i>
                                 {{ group.tx_tracker_enabled|yesno:"TX Takibi Kapat,TX Takibi Aç" }}
+                            </button>
+                        </form>
+                        <form action="{% url 'group_toggle_yetkili' group.id %}" method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if group.uygunluk_yetkili %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                {{ group.uygunluk_yetkili|yesno:"Yetkiyi Kaldır,Yetkili Yap" }}
                             </button>
                         </form>
                         <form action="{% url 'group_delete' group.id %}" method="POST" style="display:inline;">
