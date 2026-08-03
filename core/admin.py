@@ -9,25 +9,49 @@ from .models import (
     TxTracker,
     TxRateCache,
     WebhookLog,
+    UygunlukLog,
 )
 
 
 @admin.register(TelegramGroup)
 class TelegramGroupAdmin(admin.ModelAdmin):
-    list_display = ['name', 'chat_id', 'is_active', 'tx_tracker_enabled', 'created_at']
+    list_display = [
+        'name', 'chat_id', 'kasa_uygunluk', 'is_active',
+        'tx_tracker_enabled', 'kasa_updated_at', 'created_at',
+    ]
     list_filter = ['is_active', 'tx_tracker_enabled', 'created_at']
     search_fields = ['name', 'chat_id']
     ordering = ['-created_at']
-    list_editable = ['is_active', 'tx_tracker_enabled']
+    list_editable = ['is_active', 'tx_tracker_enabled', 'kasa_uygunluk']
 
     fieldsets = (
         ('Grup Bilgileri', {
             'fields': ('name', 'chat_id', 'description')
         }),
+        ('Kasa Uygunluk', {
+            'fields': ('kasa_uygunluk', 'kasa_updated_at')
+        }),
         ('Özellikler', {
             'fields': ('is_active', 'tx_tracker_enabled')
         }),
     )
+    readonly_fields = ['kasa_updated_at']
+
+
+@admin.register(UygunlukLog)
+class UygunlukLogAdmin(admin.ModelAdmin):
+    list_display = [
+        'created_at', 'group', 'previous_amount', 'new_amount',
+        'username', 'raw_text',
+    ]
+    list_filter = ['created_at', 'group']
+    search_fields = ['group__name', 'username', 'raw_text']
+    readonly_fields = [
+        'group', 'previous_amount', 'new_amount', 'raw_text',
+        'user_id', 'username', 'created_at',
+    ]
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
 
 
 @admin.register(MessageTemplate)

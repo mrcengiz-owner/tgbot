@@ -13,6 +13,18 @@ class TelegramGroup(models.Model):
         verbose_name="Kripto TX Takibi Aktif mi?",
         help_text="Bu grupta gönderilen transaction id'ler otomatik algılansın mı?",
     )
+    kasa_uygunluk = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=0,
+        verbose_name="Kasa Uygunluk",
+        help_text="Grubun güncel kasa uygunluk tutarı (TL). /uygunluk komutu ile güncellenir.",
+    )
+    kasa_updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Kasa Son Güncelleme",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -214,6 +226,39 @@ class TxRateCache(models.Model):
 
     def __str__(self):
         return f"{self.asset} @ {self.source} = {self.rate} (cache)"
+
+
+class UygunlukLog(models.Model):
+    """/uygunluk komutu ile yapılan kasa güncellemelerinin geçmişi."""
+
+    group = models.ForeignKey(
+        TelegramGroup,
+        on_delete=models.CASCADE,
+        related_name='uygunluk_logs',
+        verbose_name="Grup",
+    )
+    previous_amount = models.DecimalField(
+        max_digits=18, decimal_places=2, default=0, verbose_name="Önceki Tutar"
+    )
+    new_amount = models.DecimalField(
+        max_digits=18, decimal_places=2, verbose_name="Yeni Tutar"
+    )
+    raw_text = models.CharField(
+        max_length=255, blank=True, verbose_name="Ham Komut"
+    )
+    user_id = models.BigIntegerField(null=True, blank=True, verbose_name="Kullanıcı ID")
+    username = models.CharField(
+        max_length=128, blank=True, null=True, verbose_name="Kullanıcı Adı"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Uygunluk Logu"
+        verbose_name_plural = "Uygunluk Logları"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.group.name}: {self.previous_amount} → {self.new_amount}"
 
 
 class WebhookLog(models.Model):

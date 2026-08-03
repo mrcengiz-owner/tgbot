@@ -4,7 +4,8 @@ Telegram Webhook Bot - Django ile entegre.
 Sorumluluklar:
 1) Her gelen webhook çağrısını WebhookLog tablosuna kaydeder (debug).
 2) /kayit komutuna grup bilgisi ile cevap verir.
-3) Tx hash tespiti: Kayıtlı ve tx_tracker_enabled=True olan gruplarda,
+3) /uygunluk [tutar]: grubun kasa tutarını günceller, tüm grupları listeler.
+4) Tx hash tespiti: Kayıtlı ve tx_tracker_enabled=True olan gruplarda,
    mesaj içindeki transaction hash'ini otomatik algılar, blockchain
    explorer'ından miktarı çeker, BTCTurk/Paribu'dan anlık TL kurunu alır
    ve gruba detaylı biçimlendirilmiş mesaj gönderir.
@@ -22,7 +23,7 @@ from django.http import HttpResponse, JsonResponse  # noqa: E402
 from django.views.decorators.csrf import csrf_exempt  # noqa: E402
 import requests  # noqa: E402
 
-from core.services import TxService  # noqa: E402
+from core.services import TxService, UygunlukService, is_uygunluk_command  # noqa: E402
 from core.models import TelegramGroup, WebhookLog  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ TELEGRAM_API_URL = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}'
 
 # Modül seviyesinde tek bir service instance (yeniden kullanım için)
 _tx_service = TxService(bot_token=TELEGRAM_BOT_TOKEN)
+_uygunluk_service = UygunlukService()
 
 
 @csrf_exempt
@@ -87,7 +89,32 @@ def webhook(request):
         log.action = 'kayit'
         log.save(update_fields=['action'])
 
-    # 2) Yeni davranış: tx hash tespiti
+    # 2) Kasa uygunluk: /uygunluk 100 K  (tx kontrolünden ÖNCE)
+    if chat_type in ('group', 'supergroup') and is_uygunluk_command(text):
+        try:
+            reply, action = _uygunluk_service.handle(
+                text=text,
+                chat_id=str(chat_id),
+                chat_title=chat_title or '',
+                user_id=sender.get('id'),
+                username=sender.get('username') or '',
+            )
+            sent_ok, send_err = _verify_send(str(chat_id), reply)
+            if sent_ok:
+                log.action = action
+                log.save(update_fields=['action'])
+            else:
+                log.action = 'send_failed'
+                log.error_message = f'uygunluk cevabı gönderilemedi: {send_err}'
+                log.save(update_fields=['action', 'error_message'])
+        except Exception as exc:  # noqa: BLE001
+            logger.exception('/uygunluk hata: %s', exc)
+            log.action = 'error'
+            log.error_message = str(exc)[:1000]
+            log.save(update_fields=['action', 'error_message'])
+        return HttpResponse('OK')
+
+    # 3) Tx hash tespiti
     if chat_type in ('group', 'supergroup'):
         # Önce tx var mı kontrol et
         tx_hash = _tx_service.find_tx_in_text(text)

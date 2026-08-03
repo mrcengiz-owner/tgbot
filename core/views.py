@@ -37,8 +37,17 @@ def dashboard(request):
 @login_required
 def group_list(request):
     """Gruplar listesi"""
-    groups = TelegramGroup.objects.all()
-    return render(request, 'core/groups.html', {'groups': groups})
+    from django.db.models import Sum
+
+    groups = TelegramGroup.objects.all().order_by('name')
+    total_kasa = (
+        TelegramGroup.objects.filter(is_active=True).aggregate(t=Sum('kasa_uygunluk'))['t']
+        or Decimal('0')
+    )
+    return render(request, 'core/groups.html', {
+        'groups': groups,
+        'total_kasa': total_kasa,
+    })
 
 
 @require_http_methods(["POST"])
@@ -91,6 +100,39 @@ def group_toggle_tracker(request, pk):
     group.save()
     state = "aktifleştirildi" if group.tx_tracker_enabled else "devre dışı bırakıldı"
     messages.success(request, f'Kripto TX takibi {group.name} için {state}.')
+    return redirect('groups')
+
+
+@login_required
+@require_http_methods(["POST"])
+def group_set_kasa(request, pk):
+    """Panelden grup kasa uygunluğunu güncelle."""
+    from decimal import InvalidOperation
+    from core.models import UygunlukLog
+
+    group = get_object_or_404(TelegramGroup, pk=pk)
+    raw = (request.POST.get('kasa_uygunluk') or '').strip().replace(' ', '')
+    raw = raw.replace('.', '').replace(',', '.') if raw.count('.') > 1 else raw.replace(',', '.')
+    try:
+        amount = Decimal(raw or '0')
+        if amount < 0:
+            raise InvalidOperation('negatif')
+    except (InvalidOperation, ValueError):
+        messages.error(request, 'Geçersiz kasa tutarı!')
+        return redirect('groups')
+
+    previous = group.kasa_uygunluk or Decimal('0')
+    group.kasa_uygunluk = amount.quantize(Decimal('0.01'))
+    group.kasa_updated_at = timezone.now()
+    group.save(update_fields=['kasa_uygunluk', 'kasa_updated_at', 'updated_at'])
+    UygunlukLog.objects.create(
+        group=group,
+        previous_amount=previous,
+        new_amount=group.kasa_uygunluk,
+        raw_text=f'panel:{raw}',
+        username=request.user.username,
+    )
+    messages.success(request, f'{group.name} kasa uygunluğu güncellendi.')
     return redirect('groups')
 
 
