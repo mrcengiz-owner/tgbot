@@ -20,6 +20,7 @@ import requests
 from core.models import TelegramGroup, MessageLog, WebhookLog
 from core.services import TxService, UygunlukService, is_uygunluk_command
 from core.services.bot_client import api_url, get_bot_token, get_webhook_info, send_message
+from core.services.translate_service import plan_translation
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,8 @@ HELP_TEXT = (
     '/uygunluk — yalnızca yetkili grupta tüm kasaları listeler\n'
     '/durum — kısa sistem özeti\n'
     '/help — bu mesaj\n\n'
-    'TX takibi açık gruplarda işlem hash\'i yazıldığında tutar ve TL karşılığı cevaplanır.\n\n'
+    'TX takibi açık gruplarda işlem hash\'i yazıldığında tutar ve TL karşılığı cevaplanır.\n'
+    'Çeviri açık gruplarda yabancı mesaj Türkçeye çevrilir. Bir mesaja alıntı ile cevap yazılırsa metin o dile çevrilir.\n\n'
     '<i>Grup mesajlarını görmüyorsa botu yönetici yapın veya BotFather\'da '
     '/setprivacy komutunu Disable konumuna alın.</i>'
 )
@@ -97,12 +99,14 @@ def _chat_info(chat: dict) -> str:
 def _status_text() -> str:
     active_groups = TelegramGroup.objects.filter(is_active=True).count()
     tracker_groups = TelegramGroup.objects.filter(is_active=True, tx_tracker_enabled=True).count()
+    translate_groups = TelegramGroup.objects.filter(is_active=True, ceviri_enabled=True).count()
     total_messages = MessageLog.objects.count()
     success_count = MessageLog.objects.filter(status='success').count()
     return (
         '<b>Sistem durumu</b>\n\n'
         f'Aktif grup: {active_groups}\n'
         f'TX takibi açık: {tracker_groups}\n'
+        f'Çeviri açık: {translate_groups}\n'
         f'Panel gönderimi: {total_messages} (başarılı {success_count})'
     )
 
@@ -230,12 +234,30 @@ def webhook(request):
     if not in_group:
         return HttpResponse('OK')
 
+    translation = None
+    translation_error = False
+    if 'message' in data and not sender.get('is_bot'):
+        try:
+            translation = _handle_translation(chat_id, message_id, text, update)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception('Çeviri hata: %s', exc)
+            translation_error = True
+            log.action = 'error'
+            log.error_message = str(exc)[:1000]
+            log.save(update_fields=['action', 'error_message'])
+
     tx_hash = _tx_service.find_tx_in_text(text)
     log.tx_hash = tx_hash or ''
     log.has_tx_hash = bool(tx_hash)
     log.save(update_fields=['tx_hash', 'has_tx_hash'])
 
     if not tx_hash:
+        if translation:
+            action, ok, err = translation
+            _log_send(log, action, ok, err)
+            return HttpResponse('OK')
+        if translation_error:
+            return HttpResponse('OK')
         log.action = 'no_tx'
         log.error_message = 'mesajda tx hash bulunamadı'
         log.save(update_fields=['action', 'error_message'])
@@ -283,6 +305,30 @@ def webhook(request):
         log.save(update_fields=['action', 'error_message'])
 
     return HttpResponse('OK')
+
+
+def _handle_translation(chat_id, message_id, text: str, update: dict):
+    """Çeviri açıksa mesajı işler. (action, ok, err) veya None."""
+    try:
+        group = TelegramGroup.objects.get(chat_id=str(chat_id))
+    except TelegramGroup.DoesNotExist:
+        return None
+    if not group.is_active or not group.ceviri_enabled:
+        return None
+
+    reply = update.get('reply_to_message') or {}
+    quoted = reply.get('text') or reply.get('caption') or ''
+    planned = plan_translation(text, quoted or None)
+    if not planned:
+        return None
+
+    ok, err = send_message(
+        chat_id,
+        planned.html,
+        token=get_bot_token(),
+        reply_to_message_id=message_id,
+    )
+    return planned.action, ok, err
 
 
 def _handle_my_chat_member(member: dict) -> None:

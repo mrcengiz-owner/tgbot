@@ -37,6 +37,7 @@ def send_message(
     parse_mode: Optional[str] = 'HTML',
     token: Optional[str] = None,
     timeout: int = 10,
+    reply_to_message_id: Optional[int] = None,
 ) -> Tuple[bool, str]:
     """Mesaj gönderir. HTML parse hatasında düz metinle bir kez daha dener."""
     token = (token or get_bot_token() or '').strip()
@@ -45,14 +46,19 @@ def send_message(
     if not text:
         return False, 'boş mesaj'
 
-    ok, err = _post_message(token, chat_id, text, parse_mode, timeout)
+    ok, err = _post_message(
+        token, chat_id, text, parse_mode, timeout, reply_to_message_id,
+    )
+    if not ok and reply_to_message_id and 'reply' in (err or '').lower():
+        reply_to_message_id = None
+        ok, err = _post_message(token, chat_id, text, parse_mode, timeout, None)
     if ok or not parse_mode:
         return ok, err
 
     lowered = (err or '').lower()
     if 'parse' in lowered or 'entity' in lowered or 'tag' in lowered or err.startswith('HTTP 400'):
         plain = _TAG_RE.sub('', text)
-        ok2, err2 = _post_message(token, chat_id, plain, None, timeout)
+        ok2, err2 = _post_message(token, chat_id, plain, None, timeout, reply_to_message_id)
         if ok2:
             return True, ''
         return False, err2 or err
@@ -72,12 +78,15 @@ def get_webhook_info(timeout: int = 10) -> dict:
         return {'ok': False, 'error': str(exc)}
 
 
-def _post_message(token, chat_id, text, parse_mode, timeout) -> Tuple[bool, str]:
+def _post_message(token, chat_id, text, parse_mode, timeout, reply_to_message_id=None) -> Tuple[bool, str]:
     payload = {
         'chat_id': chat_id,
         'text': text[:4096],
         'disable_web_page_preview': True,
     }
+    if reply_to_message_id:
+        payload['reply_to_message_id'] = reply_to_message_id
+        payload['allow_sending_without_reply'] = True
     if parse_mode:
         payload['parse_mode'] = parse_mode
     try:

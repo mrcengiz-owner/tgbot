@@ -98,6 +98,9 @@
                             {% if group.uygunluk_yetkili %}
                                 <span class="badge bg-primary"><i class="fas fa-shield-alt me-1"></i>Yetkili</span>
                             {% endif %}
+                            {% if group.ceviri_enabled %}
+                                <span class="badge bg-info text-dark"><i class="fas fa-language me-1"></i>Çeviri</span>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -123,6 +126,13 @@
                             <button type="submit" class="btn btn-sm {% if group.tx_tracker_enabled %}btn-outline-warning{% else %}btn-outline-info{% endif %}">
                                 <i class="fas fa-coins me-1"></i>
                                 {{ group.tx_tracker_enabled|yesno:"TX Takibi Kapat,TX Takibi Aç" }}
+                            </button>
+                        </form>
+                        <form action="{% url 'group_toggle_ceviri' group.id %}" method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if group.ceviri_enabled %}btn-info{% else %}btn-outline-info{% endif %}">
+                                <i class="fas fa-language me-1"></i>
+                                {{ group.ceviri_enabled|yesno:"Çeviriyi Kapat,Çeviriyi Aç" }}
                             </button>
                         </form>
                         <form action="{% url 'group_toggle_yetkili' group.id %}" method="POST" style="display:inline;">
@@ -190,6 +200,12 @@
                         <input class="form-check-input" type="checkbox" id="txTrackerEnabled" name="tx_tracker_enabled">
                         <label class="form-check-label" for="txTrackerEnabled">
                             <i class="fas fa-coins me-1 text-warning"></i>Kripto TX takibini bu grup için aktifleştir
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="ceviriEnabled" name="ceviri_enabled">
+                        <label class="form-check-label" for="ceviriEnabled">
+                            <i class="fas fa-language me-1 text-info"></i>Çeviriyi aç: yabancı mesaj Türkçeye, alıntıya cevap o dile
                         </label>
                     </div>
                 </div>

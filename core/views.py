@@ -58,6 +58,7 @@ def group_add(request):
     chat_id = request.POST.get('chat_id')
     description = request.POST.get('description', '')
     tx_tracker_enabled = request.POST.get('tx_tracker_enabled') == 'on'
+    ceviri_enabled = request.POST.get('ceviri_enabled') == 'on'
 
     if TelegramGroup.objects.filter(chat_id=chat_id).exists():
         messages.error(request, 'Bu Chat ID zaten kayıtlı!')
@@ -68,6 +69,7 @@ def group_add(request):
         chat_id=chat_id,
         description=description,
         tx_tracker_enabled=tx_tracker_enabled,
+        ceviri_enabled=ceviri_enabled,
     )
     messages.success(request, 'Grup başarıyla eklendi!')
     return redirect('groups')
@@ -104,6 +106,18 @@ def group_toggle_tracker(request, pk):
     group.save()
     state = "aktifleştirildi" if group.tx_tracker_enabled else "devre dışı bırakıldı"
     messages.success(request, f'Kripto TX takibi {group.name} için {state}.')
+    return redirect('groups')
+
+
+@login_required
+@require_http_methods(["POST"])
+def group_toggle_ceviri(request, pk):
+    """Grup çevirisini aç veya kapat."""
+    group = get_object_or_404(TelegramGroup, pk=pk)
+    group.ceviri_enabled = not group.ceviri_enabled
+    group.save(update_fields=['ceviri_enabled', 'updated_at'])
+    state = "açıldı" if group.ceviri_enabled else "kapatıldı"
+    messages.success(request, f'{group.name} için çeviri {state}.')
     return redirect('groups')
 
 

@@ -17,12 +17,12 @@ from .models import (
 class TelegramGroupAdmin(admin.ModelAdmin):
     list_display = [
         'name', 'chat_id', 'kasa_uygunluk', 'is_active',
-        'uygunluk_yetkili', 'tx_tracker_enabled', 'kasa_updated_at', 'created_at',
+        'uygunluk_yetkili', 'tx_tracker_enabled', 'ceviri_enabled', 'kasa_updated_at', 'created_at',
     ]
-    list_filter = ['is_active', 'uygunluk_yetkili', 'tx_tracker_enabled', 'created_at']
+    list_filter = ['is_active', 'uygunluk_yetkili', 'tx_tracker_enabled', 'ceviri_enabled', 'created_at']
     search_fields = ['name', 'chat_id']
     ordering = ['-created_at']
-    list_editable = ['is_active', 'uygunluk_yetkili', 'tx_tracker_enabled', 'kasa_uygunluk']
+    list_editable = ['is_active', 'uygunluk_yetkili', 'tx_tracker_enabled', 'ceviri_enabled', 'kasa_uygunluk']
 
     fieldsets = (
         ('Grup Bilgileri', {
@@ -32,7 +32,7 @@ class TelegramGroupAdmin(admin.ModelAdmin):
             'fields': ('kasa_uygunluk', 'kasa_updated_at', 'uygunluk_yetkili')
         }),
         ('Özellikler', {
-            'fields': ('is_active', 'tx_tracker_enabled')
+            'fields': ('is_active', 'tx_tracker_enabled', 'ceviri_enabled')
         }),
     )
     readonly_fields = ['kasa_updated_at']

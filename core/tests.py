@@ -3,7 +3,7 @@ Kripto TX Takip modülü için unit testler.
 Gerçek ağ çağrısı yapmadan regex/format mantığını doğrular.
 """
 from decimal import Decimal
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from core.services.tx_service import TxService
 
@@ -81,3 +81,46 @@ class RateServiceCacheTests(TestCase):
         from core.services.rate_service import RateService
         out = RateService().get_try_rate('')
         self.assertIsNone(out['rate'])
+
+
+class TranslatePlanTests(SimpleTestCase):
+    def _fake(self, text, target):
+        table = {
+            ('Hello team', 'tr'): ('Merhaba ekip', 'en'),
+            ('Hello team', 'en'): ('Hello team', 'en'),
+            ('Kontrol ettim', 'en'): ('I checked it', 'tr'),
+            ('Kontrol ettim', 'tr'): ('Kontrol ettim', 'tr'),
+            ('Selam', 'tr'): ('Selam', 'tr'),
+        }
+        return table.get((text, target))
+
+    def test_foreign_message_becomes_turkish(self):
+        from core.services.translate_service import plan_translation
+        planned = plan_translation('Hello team', translate=self._fake)
+        self.assertIsNotNone(planned)
+        self.assertEqual(planned.action, 'ceviri_tr')
+        self.assertIn('İngilizce', planned.html)
+        self.assertIn('Merhaba ekip', planned.html)
+
+    def test_turkish_message_is_skipped(self):
+        from core.services.translate_service import plan_translation
+        self.assertIsNone(plan_translation('Selam', translate=self._fake))
+
+    def test_reply_is_translated_into_quoted_language(self):
+        from core.services.translate_service import plan_translation
+        planned = plan_translation('Kontrol ettim', quoted='Hello team', translate=self._fake)
+        self.assertIsNotNone(planned)
+        self.assertEqual(planned.action, 'ceviri_yanit')
+        self.assertIn('I checked it', planned.html)
+        self.assertIn('İngilizce', planned.html)
+
+    def test_reply_to_bot_turkish_translation_uses_original_language(self):
+        from core.services.translate_service import plan_translation
+        quoted = '🇹🇷 İngilizce\nMerhaba ekip'
+        planned = plan_translation('Kontrol ettim', quoted=quoted, translate=self._fake)
+        self.assertEqual(planned.action, 'ceviri_yanit')
+        self.assertIn('I checked it', planned.html)
+
+    def test_hash_only_is_skipped(self):
+        from core.services.translate_service import plan_translation
+        self.assertIsNone(plan_translation('a' * 64, translate=self._fake))

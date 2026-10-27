@@ -13,6 +13,11 @@ class TelegramGroup(models.Model):
         verbose_name="Kripto TX Takibi Aktif mi?",
         help_text="Bu grupta gönderilen transaction id'ler otomatik algılansın mı?",
     )
+    ceviri_enabled = models.BooleanField(
+        default=False,
+        verbose_name="Çeviri Aktif mi?",
+        help_text="Açıksa yabancı mesajlar Türkçeye çevrilir. Alıntıya yazılan cevap, alıntının diline çevrilip iletilir.",
+    )
     uygunluk_yetkili = models.BooleanField(
         default=False,
         verbose_name="Uygunluk Yetkili Grup mu?",
