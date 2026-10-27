@@ -6,7 +6,6 @@ import time
 import requests
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.conf import settings
 from core.models import ScheduledTask
 
 
@@ -47,7 +46,8 @@ class Command(BaseCommand):
         message_content = task.template.content
         
         # Token ayarla
-        bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+        from core.services.bot_client import get_bot_token
+        bot_token = get_bot_token()
         if not bot_token:
             self.stdout.write(self.style.ERROR('Bot token ayarlanmamış!'))
             return

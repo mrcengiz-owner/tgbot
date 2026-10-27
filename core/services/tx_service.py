@@ -8,7 +8,6 @@ import time
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from typing import Optional, Tuple
 
-import requests
 from django.conf import settings
 from django.utils import timezone
 
@@ -106,6 +105,8 @@ class TxService:
         self.timeout = timeout
         self.explorer = ExplorerService(timeout=timeout)
         self.rate = RateService(timeout=timeout)
+        self.last_send_ok = False
+        self.last_send_error = ''
 
     # ----------------- Public API -----------------
     def find_tx_in_text(self, text: str) -> Optional[str]:
@@ -145,6 +146,8 @@ class TxService:
     ) -> Optional[str]:
         """Mesajı işle, Telegram'a gönderilecek formatlı metni döner.
         Dönüş None ise işlem yapılmadı (tx yok / grup pasif / hata)."""
+        self.last_send_ok = False
+        self.last_send_error = ''
         tx_hash = self.find_tx_in_text(message_text)
         if not tx_hash:
             return None
@@ -158,13 +161,14 @@ class TxService:
             logger.info('Tx mesajı geldi ama grup kayıtlı değil: %s', chat_id)
             return None
         if not group.is_active or not group.tx_tracker_enabled:
-            # Sessizce yoksay ama DB'ye kısa bir kayıt bırak (analytics için)
-            TxTracker.objects.create(
+            TxTracker.objects.get_or_create(
                 tx_hash=tx_hash,
-                group=group,
-                message_id=message_id,
-                status='ignored',
-                detected_chain='unknown',
+                defaults={
+                    'group': group,
+                    'message_id': message_id,
+                    'status': 'ignored',
+                    'detected_chain': 'unknown',
+                },
             )
             return None
 
@@ -179,9 +183,12 @@ class TxService:
             },
         )
         if not created:
-            # 5 dakika içinde aynı hash geldiyse tekrar işleme
+            # Aynı hash kısa sürede tekrar gelirse sessiz kalma; gruba bilgi ver.
             if record.created_at and (timezone.now() - record.created_at).total_seconds() < 300:
-                return None
+                note = 'ℹ️ Bu işlem kısa süre önce işlendi.'
+                if send_to_telegram:
+                    self._send_to_telegram(chat_id, note)
+                return note
             record.status = 'pending'
             record.error_message = None
             record.save(update_fields=['status', 'error_message'])
@@ -197,7 +204,10 @@ class TxService:
             record.status = 'failed'
             record.error_message = 'Explorer verisi alınamadı (zincir/format desteklenmiyor olabilir)'
             record.save(update_fields=['status', 'error_message'])
-            return self._format_error(record)
+            reply = self._format_error(record)
+            if send_to_telegram:
+                self._send_to_telegram(chat_id, reply)
+            return reply
 
         # Sembol ipucu ile zincirdeki sembolü karşılaştır
         asset_symbol = (asset_hint or details.asset_symbol or 'USDT').upper()
@@ -368,7 +378,22 @@ class TxService:
         # Tx kartı
         short_hash = self._short_hash(record.tx_hash)
         if record.explorer_url:
-            parts.append(f'🔗 <a href="{record.explorer_url}"><b>Tronscan\'da Gör</b></a>  <code>{self._escape(short_hash)}</code>')
+            explorer_names = {
+                'tron': 'Tronscan',
+                'ethereum': 'Etherscan',
+                'bsc': 'BscScan',
+                'polygon': 'Polygonscan',
+                'arbitrum': 'Arbiscan',
+                'bitcoin': 'Mempool',
+                'litecoin': 'Blockchair',
+                'dogecoin': 'Blockchair',
+            }
+            label = explorer_names.get(record.detected_chain, 'Explorer')
+            href = self._escape(record.explorer_url).replace('"', '%22')
+            parts.append(
+                f'🔗 <a href="{href}"><b>{label}\'da Gör</b></a>  '
+                f'<code>{self._escape(short_hash)}</code>'
+            )
         else:
             parts.append(f'🆔 <b>Tx</b>  <code>{self._escape(short_hash)}</code>')
         parts.append('')
@@ -438,47 +463,19 @@ class TxService:
 
     # ----------------- Telegram send -----------------
     def _send_to_telegram(self, chat_id: str, text: str, reply_to_message_id: Optional[int] = None) -> bool:
-        """
-        Telegram'a mesaj gönderir.
-        Hata durumunda False döner, detay loglanır.
-        Returns (success, error_message) — caller WebhookLog'a yazabilir.
-        """
+        """Telegram'a tek mesaj gönderir. HTML bozulursa düz metne düşer."""
+        del reply_to_message_id  # silinmiş mesaja reply Telegram'ı düşürüyor
+        from core.services.bot_client import send_message
+
         if not self.bot_token:
-            logger.warning('TELEGRAM_BOT_TOKEN boş - mesaj gönderilmedi')
+            self.last_send_ok = False
+            self.last_send_error = 'TELEGRAM_BOT_TOKEN boş'
+            logger.warning(self.last_send_error)
             return False
-        url = f'https://api.telegram.org/bot{self.bot_token}/sendMessage'
-        # Önce reply_to olmadan dene (silinen mesaja reply hatası alabiliriz)
-        payload = {
-            'chat_id': chat_id,
-            'text': text,
-            'parse_mode': 'HTML',
-            'disable_web_page_preview': True,
-        }
-        try:
-            r = requests.post(url, json=payload, timeout=self.timeout)
-            if r.status_code == 200:
-                return True
-            err_text = (r.text or '')[:300]
-            logger.warning('Telegram sendMessage %s: %s', r.status_code, err_text)
-            # Bilinen ve yaygın hataları kullanıcı dostu metne çevir
-            hint = ''
-            try:
-                err_json = r.json()
-                desc = (err_json.get('description') or '').lower()
-                if 'chat not found' in desc:
-                    hint = ' — bot gruba eklenmemiş veya chat_id yanlış'
-                elif 'bot was blocked' in desc or 'bot was kicked' in desc:
-                    hint = ' — bot gruptan atılmış, yeniden ekleyin'
-                elif 'not enough rights' in desc or 'have no rights' in desc or 'forbidden' in desc:
-                    hint = ' — bot gruba ADMIN olarak eklenmeli (yöneticilerden)'
-                elif 'message is too long' in desc:
-                    hint = ' — mesaj çok uzun'
-                elif 'replied message not found' in desc:
-                    hint = ' — orijinal mesaj silinmiş'
-            except Exception:  # noqa: BLE001
-                pass
-            logger.warning('Telegram gönderim hatası: %s%s', err_text, hint)
-            return False
-        except requests.RequestException as exc:
-            logger.warning('Telegram sendMessage error: %s', exc)
-            return False
+
+        ok, err = send_message(chat_id, text, token=self.bot_token, timeout=self.timeout)
+        self.last_send_ok = ok
+        self.last_send_error = err
+        if not ok:
+            logger.warning('Telegram gönderim hatası: %s', err)
+        return ok

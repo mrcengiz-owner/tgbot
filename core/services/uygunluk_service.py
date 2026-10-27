@@ -251,6 +251,8 @@ class UygunlukService:
         """Saha için kurumsal onay mesajı — tüm liste yok."""
         return (
             '🟢 <b>Uygunluk alındı.</b>\n'
+            f'Kasa: <b>{format_tl(amount)} TL</b>\n'
+            '\n'
             'Uygun çekim oluşması durumunda tarafınıza yönlendirilecektir. '
             'Paneli kontrolde tutalım.\n'
             '\n'
@@ -287,7 +289,7 @@ class UygunlukService:
             name = (g.name[: name_width - 1] + '…') if len(g.name) > name_width else g.name
             name_pad = name.ljust(name_width)
             amt = format_tl(amount).rjust(12)
-            lines.append(f'{name_pad}  {amt}')
+            lines.append(_escape(f'{name_pad}  {amt}'))
 
         lines.append(f'{"─" * name_width}  {"─" * 12}')
         total_label = 'TOPLAM'.ljust(name_width)

@@ -92,6 +92,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8058870569:AAFfuGffgNC15hED-nlUIfqQYSewf8RND4M')
+# Boşsa webhook, isteğin geldiği host üzerinden kurulur.
+WEBHOOK_PUBLIC_URL = os.environ.get('WEBHOOK_PUBLIC_URL', '').strip()
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
 
 # Kripto TX Takip için opsiyonel API anahtarları
 # Etherscan v2: https://etherscan.io/apis (ücretsiz 5 req/s, 100k çağrı/gün)
@@ -108,21 +122,31 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 0
     SECURE_REFERRER_POLICY = 'same-origin'
-    # CSRF trusted origins - her olası domain varyasyonunu kapsa
+    # CSRF trusted origins - panelin açık olduğu her domain
     _origins_env = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '')
+    _default_origins = [
+        'https://tgbot.nexkasa.com',
+        'http://tgbot.nexkasa.com',
+        'https://www.tgbot.nexkasa.com',
+        'http://www.tgbot.nexkasa.com',
+        'https://tgbot2.nexkasa.com',
+        'http://tgbot2.nexkasa.com',
+        'https://www.tgbot2.nexkasa.com',
+        'http://www.tgbot2.nexkasa.com',
+        'https://localhost',
+        'http://localhost',
+        'https://127.0.0.1',
+        'http://127.0.0.1',
+    ]
+    for _host in ALLOWED_HOSTS:
+        _host = (_host or '').strip()
+        if _host and _host != '*' and '://' not in _host:
+            _default_origins.append(f'https://{_host}')
+            _default_origins.append(f'http://{_host}')
     if _origins_env:
         CSRF_TRUSTED_ORIGINS = [o.strip() for o in _origins_env.split(',') if o.strip()]
     else:
-        CSRF_TRUSTED_ORIGINS = [
-            'https://tgbot.nexkasa.com',
-            'http://tgbot.nexkasa.com',
-            'https://www.tgbot.nexkasa.com',
-            'http://www.tgbot.nexkasa.com',
-            'https://localhost',
-            'http://localhost',
-            'https://127.0.0.1',
-            'http://127.0.0.1',
-        ]
+        CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(_default_origins))
     # Cookie'nin SameSite davranışı (Telegram in-app browser uyumu)
     CSRF_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SAMESITE = 'Lax'

@@ -5,7 +5,6 @@ from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from django.conf import settings
 import requests
 from .models import (
     TelegramGroup,
@@ -51,6 +50,7 @@ def group_list(request):
     })
 
 
+@login_required
 @require_http_methods(["POST"])
 def group_add(request):
     """Grup ekle"""
@@ -73,6 +73,7 @@ def group_add(request):
     return redirect('groups')
 
 
+@login_required
 @require_http_methods(["POST"])
 def group_delete(request, pk):
     """Grup sil"""
@@ -82,6 +83,7 @@ def group_delete(request, pk):
     return redirect('groups')
 
 
+@login_required
 @require_http_methods(["POST"])
 def group_toggle(request, pk):
     """Grup aktif/pasif durumu değiştir"""
@@ -93,6 +95,7 @@ def group_toggle(request, pk):
     return redirect('groups')
 
 
+@login_required
 @require_http_methods(["POST"])
 def group_toggle_tracker(request, pk):
     """Grup için Kripto TX takibini aç/kapat"""
@@ -152,17 +155,39 @@ def group_set_kasa(request, pk):
 @login_required
 def settings_view(request):
     """Ayarlar sayfası"""
+    from core.models import Settings as AppSettings
+    from core.services.bot_client import get_bot_token, get_webhook_info
+
     if request.method == 'POST':
-        # Bot token güncelleme
-        main_bot_token = request.POST.get('main_bot_token')
+        main_bot_token = (request.POST.get('main_bot_token') or '').strip()
         if main_bot_token:
-            from django.conf import settings
-            settings.TELEGRAM_BOT_TOKEN = main_bot_token
-            messages.success(request, 'Ana bot token güncellendi!')
+            AppSettings.objects.update_or_create(
+                key='telegram_bot_token',
+                defaults={
+                    'value': main_bot_token,
+                    'description': 'Telegram bot token',
+                },
+            )
+            messages.success(request, 'Bot token kaydedildi. Yeni mesajlarda bu token kullanılır.')
+        else:
+            messages.info(request, 'Token boş bırakıldı, kayıtlı token duruyor.')
         return redirect('settings')
-    
+
+    info = get_webhook_info()
+    result = info.get('result') if isinstance(info, dict) else {}
+    result = result or {}
     groups = TelegramGroup.objects.filter(is_active=True)
-    return render(request, 'core/settings.html', {'groups': groups})
+    template_qs = MessageTemplate.objects.filter(is_active=True)
+    return render(request, 'core/settings.html', {
+        'groups': groups,
+        'templates': template_qs,
+        'token_configured': bool(get_bot_token()),
+        'webhook_url': result.get('url') or '',
+        'webhook_ok': bool(result.get('url')),
+        'webhook_error': result.get('last_error_message') or '',
+        'webhook_pending': result.get('pending_update_count') or 0,
+        'webhook_info_error': info.get('error', '') if isinstance(info, dict) and not info.get('ok', True) else '',
+    })
 
 
 @login_required
@@ -172,6 +197,7 @@ def templates(request):
     return render(request, 'core/templates.html', {'templates': templates})
 
 
+@login_required
 @require_http_methods(["POST"])
 def template_add(request):
     """Şablon ekle"""
@@ -188,6 +214,7 @@ def template_add(request):
     return redirect('templates')
 
 
+@login_required
 @require_http_methods(["POST"])
 def template_edit(request, pk):
     """Şablon düzenle"""
@@ -200,6 +227,7 @@ def template_edit(request, pk):
     return redirect('templates')
 
 
+@login_required
 @require_http_methods(["POST"])
 def template_delete(request, pk):
     """Şablon sil"""
@@ -220,6 +248,7 @@ def send_message_view(request):
     })
 
 
+@login_required
 @require_http_methods(["POST"])
 def send_message(request):
     """Mesaj gönder"""
@@ -248,9 +277,8 @@ def send_message(request):
     )
     log.groups.set(groups)
     
-    # Mesajları gönder (ayarlardaki ana token kullanılacak)
-    from django.conf import settings
-    bot_token = settings.TELEGRAM_BOT_TOKEN
+    from core.services.bot_client import get_bot_token
+    bot_token = get_bot_token()
     
     sent_count = 0
     failed_count = 0
@@ -285,6 +313,7 @@ def send_message(request):
     return redirect('send_message')
 
 
+@login_required
 def get_logs(request):
     """Logları JSON olarak döndür"""
     logs = MessageLog.objects.all()[:50]
@@ -300,6 +329,7 @@ def get_logs(request):
     return JsonResponse({'logs': data})
 
 
+@login_required
 def get_template(request, pk):
     """Şablon içeriğini JSON olarak döndür"""
     template = get_object_or_404(MessageTemplate, pk=pk)
@@ -324,6 +354,7 @@ def scheduled_tasks(request):
     })
 
 
+@login_required
 @require_http_methods(["POST"])
 def scheduled_task_add(request):
     """Planlanmış görev ekle"""
@@ -349,6 +380,7 @@ def scheduled_task_add(request):
     return redirect('scheduled_tasks')
 
 
+@login_required
 @require_http_methods(["POST"])
 def scheduled_task_toggle(request, pk):
     """Planlanmış görev aktif/pasif"""
@@ -360,6 +392,7 @@ def scheduled_task_toggle(request, pk):
     return redirect('scheduled_tasks')
 
 
+@login_required
 @require_http_methods(["POST"])
 def scheduled_task_delete(request, pk):
     """Planlanmış görev sil"""
@@ -369,6 +402,7 @@ def scheduled_task_delete(request, pk):
     return redirect('scheduled_tasks')
 
 
+@login_required
 @require_http_methods(["POST"])
 def scheduled_task_edit(request, pk):
     """Planlanmış görev düzenle"""
@@ -550,8 +584,10 @@ def tx_send_test(request, pk):
     from core.services import TxService  # geç import
 
     group = get_object_or_404(TelegramGroup, pk=pk)
+    from core.services.bot_client import get_bot_token
+
     sample_hash = 'f7f0b5c6c7fba0fef478033aea57035588f61475182322fd774d80a48e91f95e'
-    bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+    bot_token = get_bot_token()
 
     # Eğer tx_tracker_enabled değilse kullanıcıyı uyar
     if not group.is_active:
@@ -577,6 +613,7 @@ def tx_send_test(request, pk):
             message_text=text,
             chat_id=group.chat_id,
             message_id=None,
+            send_to_telegram=False,
         )
     except Exception as exc:  # noqa: BLE001
         messages.error(request, f'Hata: {exc}')

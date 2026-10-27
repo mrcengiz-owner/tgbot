@@ -15,8 +15,14 @@
                     {% csrf_token %}
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Bot Token</label>
-                        <input type="password" name="main_bot_token" class="form-control" placeholder="Telegram Bot Token" value="{{ bot_token|default:'' }}">
-                        <small class="text-muted">Mesaj göndermek için kullanılacak ana bot token.</small>
+                        <input type="password" name="main_bot_token" class="form-control" placeholder="Yeni token (boş bırakılırsa mevcut kalır)" autocomplete="new-password">
+                        <small class="text-muted">
+                            {% if token_configured %}
+                                Token kayıtlı. Değiştirmek için yenisini yazın; boş kaydetmek mevcut token'ı silmez.
+                            {% else %}
+                                Henüz token yok. BotFather token'ını buraya yapıştırın.
+                            {% endif %}
+                        </small>
                     </div>
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <button type="submit" class="btn btn-primary">
@@ -32,20 +38,35 @@
                 <i class="fas fa-database me-2"></i>Webhook Ayarları
             </div>
             <div class="card-body">
+                {% if webhook_info_error %}
+                <div class="alert alert-warning">Telegram durumu okunamadı: {{ webhook_info_error }}</div>
+                {% endif %}
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="p-3 rounded-3" style="background: #f8f9fa;">
                             <h6 class="mb-2">Webhook Durumu</h6>
-                            <span class="badge bg-success">Aktif</span>
+                            {% if webhook_ok %}
+                                <span class="badge bg-success">Kayıtlı</span>
+                            {% else %}
+                                <span class="badge bg-danger">Kayıtlı değil</span>
+                            {% endif %}
+                            {% if webhook_pending %}
+                                <span class="badge bg-warning text-dark ms-1">Bekleyen: {{ webhook_pending }}</span>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="p-3 rounded-3" style="background: #f8f9fa;">
-                            <h6 class="mb-2">Son Güncelleme</h6>
-                            <small class="text-muted">{{ request.session.last_webhook_update|default:"Belirtilmemiş" }}</small>
+                            <h6 class="mb-2">Webhook Adresi</h6>
+                            <small class="text-break">{{ webhook_url|default:"—" }}</small>
                         </div>
                     </div>
                 </div>
+                {% if webhook_error %}
+                <div class="alert alert-danger mt-3 mb-0">
+                    Son Telegram hatası: {{ webhook_error }}
+                </div>
+                {% endif %}
             </div>
         </div>
         
